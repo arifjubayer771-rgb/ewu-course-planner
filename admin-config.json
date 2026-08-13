@@ -1,0 +1,5 @@
+{
+  "passwordHash": "75ceed48d56157c8f8b0a937c77816f0830b61b172d7051f8b825adede65f468",
+  "updatedAt": "2026-08-13T07:52:30.062Z",
+  "note": "Upload this file next to index.html as admin-config.json so the new password works for everyone."
+}
