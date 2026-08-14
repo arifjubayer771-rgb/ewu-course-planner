@@ -1,0 +1,3234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EWU Course Planner — Build conflict-free class schedules</title>
+<meta name="description" content="Free East West University course schedule planner. Browse sections, detect conflicts, generate weekly routines from advising slips, and export your timetable as PNG.">
+<meta name="keywords" content="EWU, East West University, course planner, class routine, schedule planner, advising slip, Bangladesh university">
+<meta name="author" content="EWU Course Planner">
+<meta name="robots" content="index,follow">
+<meta name="theme-color" content="#1A7A6D">
+<link rel="canonical" href="./">
+
+<!-- Open Graph / social previews -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="EWU Course Planner">
+<meta property="og:description" content="Plan conflict-free class schedules, compare drafts, and generate weekly routines from advising slips.">
+<meta property="og:image" content="./og-preview.png">
+<meta property="og:locale" content="en_US">
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="EWU Course Planner">
+<meta name="twitter:description" content="Plan conflict-free class schedules and generate weekly routines from advising slips.">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%231A7A6D'/%3E%3Ctext x='50%25' y='54%25' text-anchor='middle' font-size='28' font-family='system-ui' font-weight='700' fill='white'%3ECP%3C/text%3E%3C/svg%3E">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+:root{
+  --ink:#1C2333;
+  --ink-soft:#4A5266;
+  --paper:#F4F1EA;
+  --paper-raised:#FFFFFF;
+  --line:#E0DBC9;
+  --line-strong:#C9C3AD;
+  --teal:#1A7A6D;
+  --teal-dark:#125A50;
+  --teal-tint:#DCEFEA;
+  --amber:#9A6B14;
+  --amber-tint:#F6EBD4;
+  --brick:#A5342A;
+  --brick-tint:#F5E4E1;
+  --green:#2E6B45;
+  --green-tint:#E4EFE7;
+  --font-display:'Source Serif 4', Georgia, serif;
+  --font-body:'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace;
+  --radius:10px;
+  --radius-sm:6px;
+  --shadow:0 1px 2px rgba(28,35,51,0.05), 0 4px 14px rgba(28,35,51,0.04);
+  --shadow-lg:0 8px 28px rgba(28,35,51,0.10);
+  --topbar-bg:rgba(255,255,255,0.88);
+  --overlay:rgba(28,35,51,0.48);
+  --input-bg:var(--paper);
+  --input-focus-bg:#fff;
+  color-scheme: light;
+}
+
+html[data-theme="dark"]{
+  --ink:#E8ECF4;
+  --ink-soft:#9AA3B5;
+  --paper:#12151C;
+  --paper-raised:#1A1F2B;
+  --line:#2A3142;
+  --line-strong:#3A4256;
+  --teal:#3DB8A8;
+  --teal-dark:#5DCFC0;
+  --teal-tint:#1A3A36;
+  --amber:#E0B04A;
+  --amber-tint:#3A2E14;
+  --brick:#E06B62;
+  --brick-tint:#3A1E1C;
+  --green:#5CBF7A;
+  --green-tint:#1A3324;
+  --shadow:0 1px 2px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.18);
+  --shadow-lg:0 10px 32px rgba(0,0,0,0.35);
+  --topbar-bg:rgba(26,31,43,0.92);
+  --overlay:rgba(0,0,0,0.62);
+  --input-bg:#151922;
+  --input-focus-bg:#1E2433;
+  color-scheme: dark;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;}
+body{
+  font-family:var(--font-body);
+  background:var(--paper);
+  color:var(--ink);
+  font-size:14px;
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .25s ease, color .2s ease;
+}
+button{font-family:inherit;font-size:inherit;cursor:pointer;}
+input,select{font-family:inherit;font-size:inherit;color:var(--ink);}
+a{color:var(--teal-dark);}
+::selection{background:var(--teal-tint);color:var(--ink);}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
+
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:600;margin:0;color:var(--ink);}
+.mono{font-family:var(--font-mono);}
+
+/* ---------- App shell ---------- */
+#app{display:flex;flex-direction:column;height:100vh;}
+
+.topbar{
+  height:58px;flex:none;display:flex;align-items:center;gap:14px;
+  padding:0 20px;border-bottom:1px solid var(--line);background:var(--topbar-bg);
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  z-index:20;
+}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--font-display);font-weight:700;font-size:18px;letter-spacing:0.2px;}
+.brand .mark{
+  width:28px;height:28px;border-radius:8px;background:linear-gradient(145deg,var(--teal),var(--teal-dark));
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-mono);font-size:12px;font-weight:600;
+  box-shadow:0 2px 8px rgba(26,122,109,0.35);
+}
+.topbar .semester-chip{
+  font-family:var(--font-mono);font-size:11.5px;color:var(--ink-soft);
+  border:1px solid var(--line);background:var(--paper);padding:4px 10px;border-radius:999px;
+  max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.topbar .search-wrap{flex:1;max-width:420px;position:relative;}
+.topbar input.global-search{
+  width:100%;padding:8px 12px 8px 34px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);
+  transition:border-color .15s, background .15s, box-shadow .15s;color:var(--ink);
+}
+.topbar input.global-search:focus{border-color:var(--teal);background:var(--input-focus-bg);box-shadow:0 0 0 3px var(--teal-tint);}
+.topbar .search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);opacity:.5;color:var(--ink-soft);}
+.topbar-spacer{flex:1;}
+.icon-btn{
+  background:none;border:1px solid transparent;padding:8px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  color:var(--ink-soft);transition:background .15s, border-color .15s, color .15s;
+}
+.icon-btn:hover{background:var(--paper);border-color:var(--line);color:var(--ink);}
+.theme-toggle{position:relative;}
+.theme-toggle .icon-sun,.theme-toggle .icon-moon{display:none;}
+html:not([data-theme="dark"]) .theme-toggle .icon-moon{display:block;}
+html[data-theme="dark"] .theme-toggle .icon-sun{display:block;}
+
+.body-row{flex:1;display:flex;min-height:0;}
+
+/* nav rail */
+.navrail{
+  width:200px;flex:none;border-right:1px solid var(--line);background:var(--paper-raised);
+  padding:18px 12px;display:flex;flex-direction:column;gap:3px;overflow-y:auto;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:9px;color:var(--ink-soft);
+  text-decoration:none;font-weight:500;font-size:13.5px;border:none;background:none;text-align:left;width:100%;
+  transition:background .15s, color .15s;
+}
+.nav-item:hover{background:var(--paper);color:var(--ink);}
+.nav-item.active{background:var(--teal-tint);color:var(--teal-dark);font-weight:600;}
+.nav-item svg{flex:none;opacity:.85;}
+.nav-section-label{font-size:10.5px;text-transform:uppercase;letter-spacing:0.06em;color:var(--ink-soft);opacity:.6;padding:14px 10px 4px;}
+
+/* main content */
+.main{flex:1;min-width:0;overflow-y:auto;padding:28px 32px 64px;}
+.main-narrow{max-width:1080px;}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;gap:16px;flex-wrap:wrap;}
+.page-header h1{font-size:28px;letter-spacing:-0.02em;}
+.page-header .sub{color:var(--ink-soft);font-size:13.5px;margin-top:5px;}
+
+/* schedule rail */
+.schedule-rail{
+  width:286px;flex:none;border-left:1px solid var(--line);background:var(--paper-raised);
+  padding:20px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;
+}
+.schedule-rail h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);font-family:var(--font-body);font-weight:700;}
+.rail-select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink);}
+.rail-progress{height:6px;border-radius:99px;background:var(--line);overflow:hidden;margin:8px 0 2px;}
+.rail-progress > div{height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-dark));border-radius:99px;transition:width .3s ease;}
+.rail-count{font-size:12px;color:var(--ink-soft);font-family:var(--font-mono);}
+.rail-item{
+  border:1px solid var(--line);border-radius:9px;padding:10px 12px;background:var(--paper);
+  transition:border-color .15s, box-shadow .15s;
+}
+.rail-item:hover{border-color:var(--line-strong);box-shadow:var(--shadow);}
+.rail-item .code{font-family:var(--font-mono);font-weight:600;font-size:13px;}
+.rail-item .sec{font-size:11.5px;color:var(--ink-soft);}
+.rail-item .meet{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);margin-top:3px;}
+.rail-item .rm-btn{float:right;background:none;border:none;color:var(--brick);font-size:11px;padding:0;opacity:.7;}
+.rail-item .rm-btn:hover{opacity:1;}
+.rail-empty{font-size:12.5px;color:var(--ink-soft);border:1.5px dashed var(--line-strong);border-radius:9px;padding:18px;text-align:center;}
+
+/* buttons */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:8px;border:1px solid var(--line-strong);
+  background:var(--paper-raised);color:var(--ink);font-weight:600;font-size:13px;white-space:nowrap;
+  transition:border-color .15s, background .15s, box-shadow .15s, transform .1s;
+}
+.btn:hover{border-color:var(--ink-soft);box-shadow:var(--shadow);}
+.btn:active{transform:translateY(1px);}
+.btn-primary{
+  background:linear-gradient(145deg,var(--teal),var(--teal-dark));border-color:transparent;color:#fff;
+  box-shadow:0 2px 8px rgba(26,122,109,0.28);
+}
+.btn-primary:hover{filter:brightness(1.06);box-shadow:0 4px 14px rgba(26,122,109,0.35);}
+html[data-theme="dark"] .btn-primary{box-shadow:0 2px 10px rgba(61,184,168,0.25);}
+.btn-danger{color:var(--brick);border-color:var(--brick);background:var(--brick-tint);}
+.btn-sm{padding:5px 11px;font-size:12px;border-radius:7px;}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;}
+.btn-ghost{border-color:transparent;background:none;box-shadow:none;}
+.btn-ghost:hover{background:var(--paper);border-color:var(--line);}
+
+/* cards */
+.card{
+  background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+  transition:box-shadow .2s, border-color .2s;
+}
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:24px;}
+.stat-card{padding:18px 20px;position:relative;overflow:hidden;}
+.stat-card::after{
+  content:'';position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;
+  background:var(--teal-tint);opacity:.55;pointer-events:none;
+}
+.stat-card .num{font-family:var(--font-display);font-size:32px;font-weight:700;letter-spacing:-0.02em;position:relative;}
+.stat-card .label{color:var(--ink-soft);font-size:12.5px;margin-top:3px;position:relative;}
+.quick-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
+
+/* upload */
+.upload-shell{max-width:640px;margin:60px auto;text-align:center;}
+
+/* filters / search */
+.filter-bar{
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:18px;
+  background:var(--paper-raised);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);
+}
+.filter-bar input, .filter-bar select{
+  padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);height:36px;
+  transition:border-color .15s, box-shadow .15s;color:var(--ink);
+}
+.filter-bar input:focus, .filter-bar select:focus{border-color:var(--teal);background:var(--input-focus-bg);box-shadow:0 0 0 3px var(--teal-tint);}
+.filter-bar .search-input{flex:1;min-width:220px;}
+.filter-tags{display:flex;gap:6px;margin-left:auto;}
+
+/* course card */
+.course-card{padding:20px 22px;margin-bottom:14px;transition:box-shadow .2s, border-color .2s;}
+.course-card:hover{border-color:var(--line-strong);box-shadow:var(--shadow-lg);}
+.course-card .head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid var(--line);}
+.course-card .code{font-family:var(--font-mono);font-weight:700;font-size:18px;letter-spacing:.01em;}
+.course-card .count{color:var(--ink-soft);font-size:12px;font-weight:500;}
+.section-list{display:flex;flex-direction:column;}
+.section-row{padding:14px 0;border-bottom:1px solid var(--line);transition:background .15s;}
+.section-row:last-child{border-bottom:none;padding-bottom:2px;}
+.section-row.in-active-schedule{background:linear-gradient(90deg, var(--teal-tint), transparent 45%);margin:0 -14px;padding-left:14px;padding-right:14px;border-radius:8px;}
+.section-top{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px;}
+.section-id{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+.section-number{font-weight:700;font-size:13.5px;color:var(--ink);}
+.section-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.chip{display:inline-flex;align-items:center;font-size:11.5px;padding:3px 10px;border-radius:999px;background:var(--paper);border:1px solid var(--line);color:var(--ink-soft);font-weight:500;}
+.chip-faculty{background:var(--teal-tint);color:var(--teal-dark);border-color:transparent;font-weight:600;}
+.chip-dept{background:var(--amber-tint);color:var(--amber);border-color:transparent;font-weight:600;}
+.chip-added{background:var(--green-tint);color:var(--green);border-color:transparent;font-weight:600;}
+.chip-lab{background:var(--amber-tint);color:var(--amber);border-color:transparent;font-weight:600;}
+.chip-class{background:var(--teal-tint);color:var(--teal-dark);border-color:transparent;font-weight:600;}
+.chip-conflict{background:var(--brick-tint);color:var(--brick);border-color:transparent;font-weight:600;}
+.capacity-pill{font-family:var(--font-mono);font-size:11px;color:var(--ink-soft);background:var(--paper);border:1px solid var(--line);padding:4px 10px;border-radius:7px;white-space:nowrap;}
+.capacity-pill.seats-ok{border-color:var(--green);color:var(--green);}
+.capacity-pill.seats-low{border-color:var(--amber);color:var(--amber);background:var(--amber-tint);}
+.capacity-pill.seats-critical{border-color:var(--brick);color:var(--brick);background:var(--brick-tint);font-weight:700;}
+.conflict-hint{font-size:12px;color:var(--brick);margin:4px 0 8px;padding:6px 10px;background:var(--brick-tint);border-radius:6px;}
+.section-row.has-conflict{border-left:3px solid var(--brick);}
+.gap-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:14px 0 18px;}
+.gap-card{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:10px 12px;}
+.gap-card .day{font-weight:700;font-size:12px;margin-bottom:4px;}
+.gap-card .stat{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-soft);}
+.compare-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:8px;}
+.compare-card{padding:18px;display:flex;flex-direction:column;gap:10px;}
+.compare-card h3{font-size:17px;}
+.compare-metric{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:4px 0;border-bottom:1px solid var(--line);}
+.compare-metric:last-child{border-bottom:none;}
+.compare-metric .label{color:var(--ink-soft);}
+.compare-metric .val{font-weight:600;font-family:var(--font-mono);text-align:right;}
+.compare-metric.best .val{color:var(--green);}
+.compare-metric.bad .val{color:var(--brick);}
+.free-slot{font-family:var(--font-mono);font-size:12px;padding:4px 0;color:var(--ink-soft);}
+.meetings-table{display:flex;flex-direction:column;gap:5px;padding-left:1px;}
+.meeting-row{display:flex;align-items:center;gap:12px;font-size:12.5px;color:var(--ink-soft);}
+.meeting-row.muted{color:var(--ink-soft);opacity:.75;font-style:italic;}
+.day-pill{
+  flex:none;width:36px;text-align:center;font-family:var(--font-mono);font-size:10.5px;font-weight:700;
+  background:var(--ink);color:var(--paper-raised);border-radius:5px;padding:3px 0;letter-spacing:.02em;
+}
+.meeting-time{font-weight:600;color:var(--ink);min-width:150px;}
+.meeting-room{color:var(--ink-soft);}
+.meeting-room.muted{opacity:.7;font-style:italic;}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600;}
+.badge-teal{background:var(--teal-tint);color:var(--teal-dark);}
+.badge-amber{background:var(--amber-tint);color:var(--amber);}
+.badge-green{background:var(--green-tint);color:var(--green);}
+.badge-brick{background:var(--brick-tint);color:var(--brick);}
+
+/* dropdown */
+.dropdown{position:relative;display:inline-block;}
+.dropdown-menu{
+  position:absolute;right:0;top:calc(100% + 6px);background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;
+  box-shadow:var(--shadow-lg);min-width:220px;z-index:50;padding:6px;
+}
+.dropdown-menu button{display:block;width:100%;text-align:left;padding:8px 10px;border:none;background:none;border-radius:7px;font-size:13px;color:var(--ink);}
+.dropdown-menu button:hover{background:var(--paper);}
+.dropdown-menu .divider{height:1px;background:var(--line);margin:4px 2px;}
+
+/* modal */
+.modal-backdrop{position:fixed;inset:0;background:var(--overlay);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;}
+.modal{background:var(--paper-raised);border-radius:14px;max-width:640px;width:100%;max-height:86vh;overflow-y:auto;box-shadow:var(--shadow-lg);border:1px solid var(--line);}
+.modal-header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+.modal-body{padding:20px 22px;}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;}
+
+/* toast */
+#toast-host{position:fixed;bottom:22px;right:22px;display:flex;flex-direction:column;gap:8px;z-index:200;max-width:360px;}
+.toast{background:var(--ink);color:var(--paper-raised);padding:12px 16px;border-radius:10px;font-size:13px;box-shadow:var(--shadow-lg);}
+.toast.error{background:var(--brick);color:#fff;}
+.toast.success{background:var(--teal-dark);color:#fff;}
+
+/* schedules list */
+.schedule-card{padding:16px 18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;}
+.schedule-card .name{font-family:var(--font-display);font-size:17px;font-weight:600;}
+.schedule-card .meta{color:var(--ink-soft);font-size:12.5px;margin-top:3px;}
+.schedule-card .actions{display:flex;gap:6px;}
+
+/* timetable (signature element) */
+.timetable-wrap{overflow-x:auto;border:1px solid var(--line-strong);border-radius:16px;background:var(--paper-raised);box-shadow:var(--shadow);}
+.timetable{display:grid;position:relative;min-width:100%;}
+.tt-cell{border-bottom:1px solid var(--line);border-right:1px solid var(--line);position:relative;background:var(--paper-raised);}
+.tt-head{
+  font-family:var(--font-mono);font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink);
+  padding:14px 8px;text-align:center;border-bottom:2px solid var(--line-strong);border-right:1px solid var(--line);
+  background:var(--paper);position:sticky;top:0;z-index:2;font-weight:700;
+}
+.tt-time{font-family:var(--font-mono);font-size:12px;color:var(--ink-soft);text-align:right;padding:6px 12px 0 0;border-right:2px solid var(--line-strong);background:var(--paper);font-weight:600;}
+.tt-block{
+  position:absolute;border-radius:10px;padding:8px 10px;overflow:hidden;
+  border-left:5px solid var(--teal);background:var(--teal-tint);color:var(--teal-dark);
+  box-shadow:0 3px 10px rgba(0,0,0,0.12);line-height:1.35;z-index:3;
+  display:flex;flex-direction:column;justify-content:flex-start;gap:2px;
+}
+.tt-block .c{font-family:var(--font-mono);font-weight:800;font-size:14px;letter-spacing:.01em;}
+.tt-block .tt-time-range{font-family:var(--font-mono);font-size:12px;font-weight:700;opacity:.95;}
+.tt-block .tt-meta{font-size:11.5px;opacity:.9;font-weight:500;line-height:1.35;white-space:normal;overflow:hidden;}
+.tt-block .tt-kind{
+  display:inline-block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  padding:1px 6px;border-radius:4px;background:rgba(0,0,0,.12);margin-top:2px;width:fit-content;
+}
+.tt-block.conflict{border-left-color:var(--brick);background:var(--brick-tint);color:var(--brick);}
+.tt-block.lab-block{border-left-color:#d4a017;background:rgba(212,160,23,.18);color:#e8c56a;}
+[data-theme="light"] .tt-block.lab-block,:root:not([data-theme="dark"]) .tt-block.lab-block{color:#8a6a0a;background:rgba(212,160,23,.22);}
+.tt-gap{
+  position:absolute;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px;
+  font-family:var(--font-mono);font-size:13px;font-weight:700;letter-spacing:.04em;
+  color:#9aa3b5;pointer-events:none;z-index:1;
+  border:2px dashed rgba(154,163,181,.5);
+  border-radius:10px;
+  background:rgba(154,163,181,.12);
+}
+.tt-gap .gap-label{font-size:10px;font-weight:600;opacity:.8;letter-spacing:.06em;}
+[data-theme="light"] .tt-gap,:root:not([data-theme="dark"]) .tt-gap{
+  color:#6b7280;border-color:rgba(107,114,128,.45);background:rgba(107,114,128,.1);
+}
+/* Export-optimized readability */
+.tt-export-mode .tt-head{font-size:15px;padding:16px 10px;}
+.tt-export-mode .tt-time{font-size:13px;}
+.tt-export-mode .tt-block{padding:10px 12px;border-radius:12px;}
+.tt-export-mode .tt-block .c{font-size:16px;}
+.tt-export-mode .tt-block .tt-time-range{font-size:13px;}
+.tt-export-mode .tt-block .tt-meta{font-size:12.5px;}
+.tt-export-mode .tt-gap{font-size:14px;}
+.tt-legend{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:12px;color:var(--ink-soft);margin-bottom:10px;}
+.tt-legend-item{display:flex;align-items:center;gap:6px;}
+.tt-legend-swatch{width:14px;height:14px;border-radius:4px;border-left:3px solid var(--teal);background:var(--teal-tint);}
+.tt-legend-swatch.lab{border-left-color:#d4a017;background:rgba(212,160,23,.2);}
+.tt-legend-swatch.gap{border:1.5px dashed rgba(154,163,181,.6);background:rgba(154,163,181,.12);}
+
+/* misc */
+.empty-state{text-align:center;padding:60px 20px;color:var(--ink-soft);}
+.empty-state h3{color:var(--ink);margin-bottom:6px;}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+table.data-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);border-bottom:1px solid var(--line-strong);padding:8px 10px;}
+table.data-table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top;}
+table.data-table tr:hover td{background:var(--paper);}
+.hidden{display:none !important;}
+.form-row{margin-bottom:14px;}
+.form-row label{display:block;font-size:12.5px;font-weight:600;margin-bottom:5px;color:var(--ink-soft);}
+.form-row input,.form-row select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--ink);}
+.chip-select{display:flex;flex-wrap:wrap;gap:6px;}
+.chip-select button{padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--paper-raised);font-size:12.5px;color:var(--ink);transition:background .15s, color .15s;}
+.chip-select button.on{background:var(--teal);border-color:var(--teal);color:#fff;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-thumb{background:var(--line-strong);border-radius:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+@media (max-width:900px){
+  .navrail{display:none;}
+  .schedule-rail{display:none;}
+}
+
+/* upload dropzone polish */
+.dropzone{
+  border:1.5px dashed var(--line-strong);border-radius:14px;padding:52px 24px;background:var(--paper-raised);
+  transition:border-color .2s, background .2s, box-shadow .2s;
+}
+.dropzone.drag{border-color:var(--teal);background:var(--teal-tint);box-shadow:0 0 0 4px var(--teal-tint);}
+.dropzone svg{opacity:.5;margin-bottom:10px;color:var(--ink-soft);}
+.dropzone .hint{color:var(--ink-soft);font-size:12.5px;margin-top:6px;}
+.progress-bar{height:8px;border-radius:99px;background:var(--line);overflow:hidden;margin:16px 0 6px;}
+.progress-bar > div{height:100%;background:linear-gradient(90deg,var(--teal),var(--teal-dark));transition:width .25s;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-host"></div>
+
+<script>
+/* ============================================================
+   EWU Course Planner — East West University schedule tool
+   Single-file client-side application.
+   Sections: Utils -> Storage -> PDFParser -> Store -> Conflict
+   Engine -> Generator -> UI Renderers -> Router -> Init
+   ============================================================ */
+
+/* ---------------------- 1. UTILITIES ---------------------- */
+
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const DAY_ORDER = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const DAY_SHORT = {Sunday:'Sun',Monday:'Mon',Tuesday:'Tue',Wednesday:'Wed',Thursday:'Thu',Friday:'Fri',Saturday:'Sat'};
+const DEFAULT_DAY_MAP = {S:'Sunday', M:'Monday', T:'Tuesday', W:'Wednesday', R:'Thursday', F:'Friday', A:'Saturday'};
+
+function uid(prefix){ return (prefix||'id') + '_' + Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4); }
+
+function escapeHtml(s){
+  if(s===null||s===undefined) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function parseTimeToMinutes(raw){
+  if(!raw) return null;
+  // Normalize: strip spaces, accept optional dots as colon, force AM/PM
+  let s = String(raw).toUpperCase().replace(/\s+/g,'').replace(/\./g,':');
+  // Also accept 0830AM style without colon
+  if(/^(\d{3,4})(AM|PM)$/.test(s)){
+    const m = /^(\d{1,2})(\d{2})(AM|PM)$/.exec(s);
+    if(m) s = m[1] + ':' + m[2] + m[3];
+  }
+  const m = /^(\d{1,2}):(\d{2})(AM|PM)$/.exec(s);
+  if(!m) return null;
+  let h = parseInt(m[1],10);
+  const min = parseInt(m[2],10);
+  if(min > 59 || h > 12) return null;
+  const ap = m[3];
+  if(ap==='AM'){ if(h===12) h=0; } else { if(h!==12) h+=12; }
+  return h*60+min;
+}
+
+function formatMinutes(mins){
+  if(mins===null||mins===undefined) return '--';
+  let h = Math.floor(mins/60), m = mins%60;
+  const ap = h>=12 ? 'PM':'AM';
+  let h12 = h%12; if(h12===0) h12=12;
+  return h12 + ':' + String(m).padStart(2,'0') + ' ' + ap;
+}
+
+function dayShortFromFull(day){ return DAY_SHORT[day] || day.slice(0,3); }
+
+function debounce(fn, wait){
+  let t;
+  return function(...args){ clearTimeout(t); t = setTimeout(()=>fn.apply(this,args), wait); };
+}
+
+// deterministic color index for a course code (for timetable block tinting variety, subtle use)
+function hashCode(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
+  return Math.abs(h);
+}
+
+function toast(msg, kind){
+  const host = document.getElementById('toast-host');
+  const el = document.createElement('div');
+  el.className = 'toast' + (kind ? ' '+kind : '');
+  el.textContent = msg;
+  host.appendChild(el);
+  setTimeout(()=>{ el.style.transition='opacity .3s'; el.style.opacity='0'; setTimeout(()=>el.remove(),300); }, 3400);
+}
+
+/* ---------------------- 2. PERSISTENT STORAGE ---------------------- */
+
+const Persist = {
+  _prefix: 'ewu-cp:',
+  async get(key){
+    try{
+      // Prefer localStorage (works on any static host); fall back to window.storage if present
+      if(typeof localStorage !== 'undefined'){
+        const raw = localStorage.getItem(this._prefix + key);
+        return raw ? JSON.parse(raw) : null;
+      }
+      if(window.storage && window.storage.get){
+        const res = await window.storage.get(key, false);
+        return res ? JSON.parse(res.value) : null;
+      }
+      return null;
+    }catch(e){ return null; }
+  },
+  async set(key, value){
+    try{
+      const json = JSON.stringify(value);
+      if(json.length > 4.5*1024*1024){
+        console.warn('Skipping persistence for', key, '- exceeds safe size', json.length);
+        toast('Dataset is large; some data may not be saved on this device. Publish dataset.json for shared use.','error');
+        return false;
+      }
+      if(typeof localStorage !== 'undefined'){
+        localStorage.setItem(this._prefix + key, json);
+        return true;
+      }
+      if(window.storage && window.storage.set){
+        await window.storage.set(key, json, false);
+        return true;
+      }
+      return false;
+    }catch(e){
+      console.warn('persist failed', key, e);
+      if(e && e.name === 'QuotaExceededError') toast('Browser storage full. Publish dataset.json instead of keeping the full catalog locally.','error');
+      return false;
+    }
+  },
+  async del(key){
+    try{
+      if(typeof localStorage !== 'undefined') localStorage.removeItem(this._prefix + key);
+      else if(window.storage && window.storage.delete) await window.storage.delete(key, false);
+    }catch(e){}
+  }
+};
+
+/* ---------------------- 3. PDF PARSER ---------------------- */
+
+const CourseCodeRE = /\b([A-Z]{2,5}\d{3,4}[A-Z]?)\b/;
+const CapacityRE = /\b(\d{1,4})\s*\/\s*(\d{1,4})\b/;
+const RoomRE = /\b([A-Z]{1,4}\d{0,2}[-–]?\d{1,4}[A-Z]?)\b/i;
+// Clock time token (with optional space before AM/PM)
+const TIME_TOKEN = '(\\d{1,2}[:.]\\d{2}\\s*[APap][Mm]|\\d{3,4}\\s*[APap][Mm])';
+const TIME_TOKEN_RE = new RegExp(TIME_TOKEN, 'gi');
+
+function buildTimeDayRE(dayLetters){
+  const letters = dayLetters.join('');
+  // Strict: day + start + dash + end all adjacent
+  return new RegExp(
+    '\\b([' + letters + ']{1,4})\\s+' + TIME_TOKEN + '\\s*[-–—]\\s*' + TIME_TOKEN,
+    'i'
+  );
+}
+
+function buildTimeOnlyRE(){
+  return new RegExp('\\b' + TIME_TOKEN + '\\s*[-–—]\\s*' + TIME_TOKEN, 'i');
+}
+
+/**
+ * Robust meeting extractor for PDFs where the timing cell wraps across lines,
+ * e.g. "ST 11:50 AM -" on one line and "01:20 PM" on the next.
+ * Returns {letters, start, end, ranges:[{index,len},...]} so callers can
+ * strip only the timing tokens without deleting section/room in between.
+ */
+function extractMeeting(rest, dayLetters){
+  const lettersClass = dayLetters.join('');
+
+  // 1) Strict adjacent day+start-end
+  const strict = buildTimeDayRE(dayLetters).exec(rest);
+  if(strict){
+    const start = parseTimeToMinutes(strict[2]);
+    const end = parseTimeToMinutes(strict[3]);
+    if(start !== null && end !== null && end > start){
+      return {
+        letters: strict[1].toUpperCase().split(''),
+        start, end,
+        ranges: [{ index: strict.index, len: strict[0].length }]
+      };
+    }
+  }
+
+  // 2) Day + start time, optional dash; end time somewhere later (handles wrap)
+  const dayStartRE = new RegExp(
+    '\\b([' + lettersClass + ']{1,4})\\s+' + TIME_TOKEN + '(?:\\s*[-–—])?',
+    'i'
+  );
+  const ds = dayStartRE.exec(rest);
+  if(ds){
+    const start = parseTimeToMinutes(ds[2]);
+    if(start !== null){
+      const afterStart = rest.slice(ds.index + ds[0].length);
+      const afterDash = /[-–—]\s*/.exec(afterStart);
+      let searchFrom = afterDash ? afterDash.index + afterDash[0].length : 0;
+      const tail = afterStart.slice(searchFrom);
+      TIME_TOKEN_RE.lastIndex = 0;
+      let endMatch;
+      while((endMatch = TIME_TOKEN_RE.exec(tail))){
+        const end = parseTimeToMinutes(endMatch[1] || endMatch[0]);
+        if(end !== null && end > start){
+          const absEndIdx = ds.index + ds[0].length + searchFrom + endMatch.index;
+          return {
+            letters: ds[1].toUpperCase().split(''),
+            start, end,
+            ranges: [
+              { index: ds.index, len: ds[0].length },
+              { index: absEndIdx, len: endMatch[0].length }
+            ]
+          };
+        }
+      }
+    }
+  }
+
+  // 3) Time-only range (no day letters)
+  const timeOnly = buildTimeOnlyRE().exec(rest);
+  if(timeOnly){
+    const start = parseTimeToMinutes(timeOnly[1]);
+    const end = parseTimeToMinutes(timeOnly[2]);
+    if(start !== null && end !== null && end > start){
+      return {
+        letters: [],
+        start, end,
+        ranges: [{ index: timeOnly.index, len: timeOnly[0].length }]
+      };
+    }
+  }
+
+  // 4) Two bare clock times in order (last resort)
+  TIME_TOKEN_RE.lastIndex = 0;
+  const times = [];
+  let tm;
+  while((tm = TIME_TOKEN_RE.exec(rest))){
+    const mins = parseTimeToMinutes(tm[1] || tm[0]);
+    if(mins !== null) times.push({ mins, index: tm.index, len: tm[0].length });
+  }
+  if(times.length >= 2){
+    for(let i=0;i<times.length-1;i++){
+      if(times[i+1].mins > times[i].mins){
+        const beforeFirst = rest.slice(0, times[i].index);
+        const dayNear = new RegExp('([' + lettersClass + ']{1,4})\\s*$', 'i').exec(beforeFirst);
+        const ranges = [];
+        if(dayNear) ranges.push({ index: dayNear.index, len: dayNear[0].length });
+        ranges.push({ index: times[i].index, len: times[i].len });
+        ranges.push({ index: times[i+1].index, len: times[i+1].len });
+        return {
+          letters: dayNear ? dayNear[1].toUpperCase().split('') : [],
+          start: times[i].mins,
+          end: times[i+1].mins,
+          ranges
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function stripRanges(text, ranges){
+  if(!ranges || !ranges.length) return text;
+  // Remove from end to start so indices stay valid
+  const sorted = ranges.slice().sort((a,b)=> b.index - a.index);
+  let out = text;
+  for(const r of sorted){
+    out = out.slice(0, r.index) + ' ' + out.slice(r.index + r.len);
+  }
+  return out.replace(/\s+/g,' ').trim();
+}
+
+function isLikelyRoom(tok){
+  if(!tok) return false;
+  // AB1-401, AB2-203, LAB-1, FUB-303, or pure room numbers like 336
+  if(/^\d{2,4}$/.test(tok)) return true;
+  if(/^[A-Z]{1,4}\d{0,2}[-–]?\d{1,4}[A-Z]?$/i.test(tok)) return true;
+  return /[A-Za-z].*\d|\d.*[A-Za-z]/.test(tok) && /[-–]?\d/.test(tok) && tok.length <= 16;
+}
+
+// Dedicated-department codes in EWU offerings (not faculty initials)
+const KNOWN_DEPTS = new Set([
+  'BBA','CSE','EEE','ENG','ECO','LAW','PHR','SOC','MDS','GEB','DIS','GDLFM','CE',
+  'MBA','LLB','PHY','MAT','CHEM','BIO','STAT','ACT','BUS','FIN','MKT','HRM','CIS',
+  'ICE','ETE','MNS','PHAR','GEN','FRE','BTE','APM','TPH','DS','PPM','MPH','CSE'
+]);
+
+function isLikelyDept(tok){
+  if(!tok) return false;
+  return KNOWN_DEPTS.has(String(tok).toUpperCase());
+}
+
+function isLikelyDayCode(tok, dayLetters){
+  if(!tok || tok.length > 4) return false;
+  const letters = (dayLetters || Object.keys(DEFAULT_DAY_MAP)).join('');
+  return new RegExp('^[' + letters + ']+$', 'i').test(tok);
+}
+
+const NON_FACULTY_CODES = new Set([
+  'TBA','LAB','ROOM','SEC','N/A','NA','AM','PM','MW','ST','TR','SR','RA','WF','MT','TF',
+  'BBA','CSE','EEE','ENG','ECO','LAW','PHR','SOC','MDS','GEB','DIS','GDLFM','CE','PM',
+  'MBA','LLB','ENG','PHY','MAT','CHEM','BIO','STAT','ACT','BUS','FIN','MKT','HRM'
+]);
+
+function isLikelyFacultyToken(tok, dayLetters){
+  if(!tok) return false;
+  if(/^\d+$/.test(tok)) return false;
+  if(isLikelyRoom(tok)) return false;
+  if(isLikelyDayCode(tok, dayLetters)) return false;
+  if(isLikelyDept(tok)) return false;
+  if(/^\d+\s*\/\s*\d+$/.test(tok)) return false;
+  // Track / topic words — never faculty
+  if(/^(and|or|the|of|for|lab|to|in|on|at|with|from|by|a|an|reality|augmented|virtual|data|analytics|engineering|interaction|software|computer|computing|human|science|business|project|gallery|lecture|circuit|internship|material|mechanics|microwave|pharmacy|programming|research|room|security|system|systems|thesis|voltage|network|database|cloud|cyber|design|theory|general|purpose|artificial|intelligence|networking)$/i.test(tok)){
+    return false;
+  }
+  // Short UPPERCASE faculty codes (e.g. MHR, TSS, RIFAT, SUDDIN)
+  if(/^[A-Z]{2,8}$/.test(tok) && !NON_FACULTY_CODES.has(tok.toUpperCase())) return true;
+  return false;
+}
+
+/** Keep only real faculty codes; drop track titles and junk. */
+function sanitizeFaculty(raw){
+  if(!raw) return null;
+  const s = String(raw).trim().toUpperCase();
+  if(!s) return null;
+  if(/^[A-Z]{2,8}$/.test(s) && !NON_FACULTY_CODES.has(s)) return s;
+  return null;
+}
+
+/** Clean junk faculty already stored in a loaded dataset. */
+function scrubDatasetFaculty(dataset){
+  if(!dataset || !dataset.courses) return;
+  Object.values(dataset.courses).forEach(c=>{
+    (c.sections||[]).forEach(s=>{
+      s.faculty = sanitizeFaculty(s.faculty);
+    });
+  });
+}
+
+/** Theory vs lab: 2h+ meetings (or explicit Lab in code/room) count as lab. */
+function isLabMeeting(m, courseCode){
+  if(!m) return false;
+  const dur = (m.end||0) - (m.start||0);
+  if(dur >= 120) return true;
+  if(courseCode && /\blab\b/i.test(courseCode)) return true;
+  if(m.room && /\blab\b/i.test(m.room)) return true;
+  return false;
+}
+
+function meetingTypeLabel(m, courseCode){
+  return isLabMeeting(m, courseCode) ? 'Lab' : 'Class';
+}
+
+/** Per-day gap analysis between consecutive meetings. */
+function dailyGapStats(schedule){
+  const byDay = {};
+  DAY_ORDER.forEach(d=>{ byDay[d] = []; });
+  for(const item of schedule.items){
+    const sec = Store.getSection(item.courseCode, item.sectionNumber);
+    if(!sec) continue;
+    for(const m of sec.meetings){
+      if(!byDay[m.day]) byDay[m.day] = [];
+      byDay[m.day].push({ start:m.start, end:m.end, code:item.courseCode });
+    }
+  }
+  const result = {};
+  for(const day of DAY_ORDER){
+    const list = (byDay[day]||[]).slice().sort((a,b)=>a.start-b.start);
+    if(list.length < 2){
+      result[day] = { count: list.length, shortest: null, longest: null, gaps: [] };
+      continue;
+    }
+    const gaps = [];
+    for(let i=0;i<list.length-1;i++){
+      const g = list[i+1].start - list[i].end;
+      if(g >= 0) gaps.push(g);
+    }
+    if(!gaps.length){
+      result[day] = { count: list.length, shortest: null, longest: null, gaps: [] };
+      continue;
+    }
+    result[day] = {
+      count: list.length,
+      shortest: Math.min(...gaps),
+      longest: Math.max(...gaps),
+      gaps
+    };
+  }
+  return result;
+}
+
+function formatGapMinutes(mins){
+  if(mins===null||mins===undefined) return '—';
+  if(mins === 0) return '0 min (back-to-back)';
+  const h = Math.floor(mins/60), m = mins%60;
+  if(h && m) return h+'h '+m+'m';
+  if(h) return h+'h';
+  return m+' min';
+}
+
+function parseLine(rawLine, dayMap){
+  const line = rawLine.replace(/\s+/g,' ').trim();
+  if(!line) return null;
+  const courseMatch = CourseCodeRE.exec(line);
+  if(!courseMatch) return null;
+  const courseCode = courseMatch[1];
+  const dayLetters = Object.keys(dayMap);
+
+  // Capacity can appear anywhere on the full line
+  let capacity = null;
+  let work = line;
+  const capMatch = CapacityRE.exec(work);
+  if(capMatch){
+    capacity = {enrolled: parseInt(capMatch[1],10), total: parseInt(capMatch[2],10)};
+  }
+  // Strip capacity tokens for cleaner field parsing
+  work = work.replace(CapacityRE, ' ').replace(/\s+/g,' ').trim();
+
+  // Timing may sit BEFORE the course code (PDF wraps timing above the row)
+  // or AFTER it — search the whole line, not only text after the course code.
+  let meetingTemplate = null;
+  const extracted = extractMeeting(work, dayLetters);
+  if(extracted){
+    meetingTemplate = {
+      letters: extracted.letters,
+      start: extracted.start,
+      end: extracted.end
+    };
+    // Strip only the timing tokens (not the section/room between them)
+    work = stripRanges(work, extracted.ranges);
+  }
+
+  // Remove the course code itself from the working string
+  work = work.replace(CourseCodeRE, ' ').replace(/\s+/g,' ').trim();
+
+  // Remaining tokens: section, faculty, room, department
+  const tokens = work.split(/\s+/).filter(Boolean);
+  let section = null;
+  const facultyTokens = [];
+  const roomTokens = [];
+  let department = null;
+  let haveRoomCore = false;
+
+  for(const tok of tokens){
+    if(section === null && /^\d{1,3}$/.test(tok)){
+      section = tok;
+      continue;
+    }
+    if(isLikelyDept(tok) && !department){
+      department = tok;
+      continue;
+    }
+    // Solid room codes/numbers first
+    if(isLikelyRoom(tok)){
+      roomTokens.push(tok);
+      haveRoomCore = true;
+      continue;
+    }
+    if(isLikelyFacultyToken(tok, dayLetters)){
+      // Faculty usually appears before room; once we have a room core, skip stray codes
+      if(!haveRoomCore) facultyTokens.push(tok);
+      continue;
+    }
+    // Parenthetical room notes only after a real room token
+    if(haveRoomCore && (/^\(/.test(tok) || /\)$/.test(tok) || /^(Engineering|Software|Cyber|Security|Data|Analytics|Programming|Human|Computer|Interaction|Circuit|Telecommunication|Virtual|Reality|Augmented|Multimedia|Image|Processing|Competitive|Networking|Database|Cloud|Purpose|General|Lab)$/i.test(tok))){
+      roomTokens.push(tok);
+    }
+  }
+
+  if(section === null){
+    for(const tok of tokens){
+      if(/^[A-Za-z0-9]{1,5}$/.test(tok) && !isLikelyRoom(tok) && !isLikelyDept(tok) && !isLikelyDayCode(tok, dayLetters)){
+        section = tok;
+        break;
+      }
+    }
+  }
+
+  const faculty = sanitizeFaculty(facultyTokens.length ? facultyTokens.join(' ') : null);
+  const room = cleanRoomString(roomTokens.length ? roomTokens.join(' ') : null);
+
+  return {
+    courseCode, section, faculty, capacity, department, room,
+    meetingTemplate, raw: rawLine.trim()
+  };
+}
+
+// Cluster item x-start positions into column bins (greedy 1D clustering).
+function detectColumnBins(items){
+  const xs = [...new Set(items.map(it=>Math.round(it.x)))].sort((a,b)=>a-b);
+  // Adaptive tolerance: denser tables (no faculty) need a slightly smaller gap threshold
+  const gaps = [];
+  for(let i=1;i<xs.length;i++) gaps.push(xs[i]-xs[i-1]);
+  const medianGap = gaps.length ? gaps.slice().sort((a,b)=>a-b)[Math.floor(gaps.length/2)] : 40;
+  const TOL = Math.max(14, Math.min(28, Math.round(medianGap * 0.55)));
+  const bins = [];
+  for(const x of xs){
+    const last = bins[bins.length-1];
+    if(last && (x - last.max) <= TOL){
+      last.max = x;
+      last.center = (last.center + x) / 2;
+    } else {
+      bins.push({center:x, max:x});
+    }
+  }
+  return bins.map(b=>b.center);
+}
+
+function colIndexForX(x, bins){
+  if(!bins.length) return 0;
+  let best = 0, bestDist = Infinity;
+  bins.forEach((c,i)=>{ const d = Math.abs(x-c); if(d < bestDist){ bestDist = d; best = i; } });
+  return best;
+}
+
+async function parsePdf(file, dayMap, onProgress){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  const numPages = pdf.numPages;
+  const rawRowTexts = [];
+
+  for(let p=1; p<=numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const items = content.items.map(it => ({str: it.str, x: it.transform[4], y: it.transform[5]}))
+      .filter(it => it.str && it.str.trim().length);
+
+    if(items.length){
+      const colBins = detectColumnBins(items);
+
+      // group into fine physical lines by y coordinate
+      items.sort((a,b)=> b.y - a.y || a.x - b.x);
+      const fineLines = [];
+      let current = null;
+      const TOL_Y = 3.2; // slightly looser to catch multi-line cell fragments
+      for(const it of items){
+        if(current && Math.abs(it.y - current.y) <= TOL_Y){
+          current.items.push(it);
+        } else {
+          current = {y: it.y, items:[it]};
+          fineLines.push(current);
+        }
+      }
+
+      // Reconstruct logical table rows.
+      // Many university PDFs place the timing cell on 2–3 physical lines:
+      //   "ST 11:50 AM -"   ← ABOVE the course-code line
+      //   ACT7101  1  336   ← anchor
+      //   "01:20 PM"        ← BELOW the course-code line
+      // We keep a short buffer of recent non-anchor lines and attach them
+      // when an anchor appears, then keep merging following continuations.
+      const LOOKS_LIKE_TIMING = /\b[SMTWRFA]{1,4}\b|\d{1,2}[:.]\d{2}\s*[APap][Mm]|\d{3,4}\s*[APap][Mm]|[-–—]/;
+      const rows = [];
+      let currentRow = null;
+      let pending = []; // recent non-anchor lines waiting for an anchor
+
+      function mergeColsIntoRow(row, lineCols){
+        const existingCols = Object.keys(row.cols).map(Number);
+        for(const ci of Object.keys(lineCols)){
+          const nci = Number(ci);
+          let target = nci;
+          if(existingCols.length && existingCols.indexOf(nci) < 0){
+            let best = existingCols[0], bestDist = Math.abs(nci - best);
+            for(const ec of existingCols){
+              const d = Math.abs(nci - ec);
+              if(d < bestDist){ bestDist = d; best = ec; }
+            }
+            if(bestDist <= 2) target = best;
+          }
+          (row.cols[target] = row.cols[target] || []).push(lineCols[ci].join(' '));
+        }
+      }
+
+      function flushRow(){
+        if(!currentRow) return;
+        rows.push(currentRow);
+        currentRow = null;
+      }
+
+      for(const ln of fineLines){
+        ln.items.sort((a,b)=>a.x-b.x);
+        const fullLineText = ln.items.map(i=>i.str).join(' ').replace(/\s+/g,' ').trim();
+        if(!fullLineText) continue;
+
+        const lineCols = {};
+        for(const it of ln.items){
+          const ci = colIndexForX(it.x, colBins);
+          (lineCols[ci] = lineCols[ci] || []).push(it.str);
+        }
+
+        const isAnchor = CourseCodeRE.test(fullLineText);
+        // A new timing block starting above the *next* course row (day letters + clock)
+        const isNewTimingStart = /\b[SMTWRFA]{1,4}\s+\d{1,2}[:.]\d{2}/i.test(fullLineText);
+
+        if(isAnchor){
+          flushRow();
+          currentRow = { cols: {} };
+          // Course-code line first (defines the primary columns)
+          for(const ci of Object.keys(lineCols)){
+            currentRow.cols[ci] = [lineCols[ci].join(' ')];
+          }
+          // Attach pending lines above that look like timing fragments
+          for(const pend of pending){
+            if(LOOKS_LIKE_TIMING.test(pend.text)){
+              mergeColsIntoRow(currentRow, pend.cols);
+            }
+          }
+          pending = [];
+        } else if(currentRow && isNewTimingStart){
+          // Timing for the *next* section — don't stick it on the current row
+          pending.push({ text: fullLineText, cols: lineCols });
+          if(pending.length > 4) pending.shift();
+        } else if(currentRow){
+          // End-time fragment, room wrap, etc. → stay with current row
+          mergeColsIntoRow(currentRow, lineCols);
+        } else {
+          pending.push({ text: fullLineText, cols: lineCols });
+          if(pending.length > 4) pending.shift();
+        }
+      }
+      flushRow();
+
+      for(const row of rows){
+        const colIdxs = Object.keys(row.cols).map(Number).sort((a,b)=>a-b);
+        // Join each column's fragments, then join columns. Also build a
+        // flat reading-order string so extractMeeting can still find times
+        // even when column order is messy.
+        const colTexts = colIdxs
+          .map(ci => row.cols[ci].join(' ').replace(/\s+/g,' ').trim())
+          .filter(Boolean);
+        const text = colTexts.join(' ');
+        if(text) rawRowTexts.push(text);
+      }
+    }
+
+    if(onProgress) onProgress(p, numPages);
+    // yield to UI thread periodically
+    if(p % 3 === 0) await new Promise(r=>setTimeout(r,0));
+  }
+
+  // parse reconstructed rows into records
+  const records = [];
+  const needsReview = [];
+  for(const line of rawRowTexts){
+    const rec = parseLine(line, dayMap);
+    if(!rec) continue; // not a course row (headers, footers, page numbers, etc.)
+    if(rec.section===null && !rec.meetingTemplate && !rec.capacity && !rec.faculty){
+      needsReview.push({raw: line, reason:'Could not identify section, timing, or capacity.'});
+      continue;
+    }
+    if(rec.meetingTemplate===null && rec.section!==null){
+      needsReview.push({raw: line, reason:'Course and section were identified, but no class timing could be parsed from this row.'});
+    }
+    records.push(rec);
+  }
+
+  return { numPages, records, needsReview };
+}
+
+function groupRecordsIntoCourses(records, needsReview, dayMap){
+  const courses = {}; // code -> {code, sections: {secNum -> section}}
+  const reviewExtra = [];
+
+  for(const rec of records){
+    const code = rec.courseCode;
+    if(!courses[code]) courses[code] = { code, sections: {} };
+    const secKey = rec.section !== null ? String(rec.section) : '_unspecified';
+    let sec = courses[code].sections[secKey];
+    if(!sec){
+      sec = {
+        sectionNumber: rec.section !== null ? String(rec.section) : 'N/A',
+        faculty: null,
+        department: null,
+        capacity: null,
+        meetings: [],
+        rawLines: []
+      };
+      courses[code].sections[secKey] = sec;
+    }
+    if(rec.faculty && !sec.faculty) sec.faculty = rec.faculty;
+    if(rec.department && !sec.department) sec.department = rec.department;
+    if(rec.capacity && !sec.capacity) sec.capacity = rec.capacity;
+    sec.rawLines.push(rec.raw);
+
+    if(rec.meetingTemplate){
+      const letters = rec.meetingTemplate.letters || [];
+      if(letters.length === 0){
+        // Time found but no day letters — flag for review; do not invent meetings
+        needsReview.push({raw: rec.raw, reason: 'Class time found but day letters were missing or could not be parsed.'});
+      } else {
+        for(const letter of letters){
+          const dayFull = dayMap[letter];
+          if(!dayFull){
+            needsReview.push({raw: rec.raw, reason: `Unrecognized day letter "${letter}".`});
+            continue;
+          }
+          // avoid exact duplicate meetings (repeated rows)
+          const dup = sec.meetings.some(m => m.day===dayFull && m.start===rec.meetingTemplate.start && m.end===rec.meetingTemplate.end && m.room===rec.room);
+          if(!dup){
+            sec.meetings.push({ day: dayFull, start: rec.meetingTemplate.start, end: rec.meetingTemplate.end, room: rec.room || null });
+          }
+        }
+      }
+    }
+  }
+
+  // flatten
+  const flat = {};
+  let sectionCount = 0, meetingCount = 0;
+  for(const code of Object.keys(courses)){
+    const sections = Object.values(courses[code].sections).sort((a,b)=>{
+      const na = parseInt(a.sectionNumber, 10), nb = parseInt(b.sectionNumber, 10);
+      if(!isNaN(na) && !isNaN(nb) && String(na)===String(a.sectionNumber) && String(nb)===String(b.sectionNumber)){
+        return na - nb;
+      }
+      // mixed numeric/alpha: numbers first by value, then alpha
+      if(!isNaN(na) && isNaN(nb)) return -1;
+      if(isNaN(na) && !isNaN(nb)) return 1;
+      if(!isNaN(na) && !isNaN(nb)) return na - nb;
+      return String(a.sectionNumber).localeCompare(String(b.sectionNumber), undefined, {numeric:true});
+    });
+    sections.forEach(s=>{
+      sectionCount++; meetingCount += s.meetings.length;
+      // Prefer clean room strings; drop junk fragments
+      s.meetings.forEach(m=>{ if(m.room) m.room = cleanRoomString(m.room); });
+      if(s.faculty) s.faculty = sanitizeFaculty(s.faculty);
+      s.meetings.sort((a,b)=> DAY_ORDER.indexOf(a.day)-DAY_ORDER.indexOf(b.day) || a.start-b.start);
+    });
+    flat[code] = { code, sections };
+  }
+  return { courses: flat, sectionCount, meetingCount, courseCount: Object.keys(flat).length };
+}
+
+/** Normalize room text: keep building/number + optional parenthetical note. */
+function cleanRoomString(raw){
+  if(!raw) return null;
+  let s = String(raw).replace(/\s+/g,' ').trim();
+  if(!s) return null;
+  // Drop leading junk like "Lab)" or lone words before a real room code
+  s = s.replace(/^(?:Lab\)?|Gallery\)?|Room)\s*/i,'').trim();
+  // Prefer first solid room token + following parenthetical
+  const m = s.match(/([A-Z]{1,4}\d{0,2}[-–]?\d{1,4}[A-Z]?|\b\d{2,4}\b)(?:\s*(\([^)]{1,60}\)))?/i);
+  if(m){
+    const core = m[1];
+    let note = m[2] || '';
+    // If note incomplete, try to grab a fuller paren from original
+    if(!note){
+      const p = s.match(/\(([^)]{2,60})\)/);
+      if(p) note = '(' + p[1] + ')';
+    }
+    return (core + (note ? ' ' + note : '')).trim();
+  }
+  // Fallback: strip capacity-like numbers at end
+  s = s.replace(/\b\d{1,4}\s*\/\s*\d{1,4}\b/g,'').trim();
+  if(s.length < 2 || /^(lab|room|gallery)\b/i.test(s)) return null;
+  return s;
+}
+
+/* ---------------------- History (undo) ---------------------- */
+const historyStack = [];
+function pushHistory(){
+  try{
+    historyStack.push(JSON.parse(JSON.stringify(Store.schedules)));
+    if(historyStack.length > 30) historyStack.shift();
+  }catch(e){}
+}
+function undoSchedules(){
+  if(!historyStack.length){ toast('Nothing to undo.'); return false; }
+  Store.schedules = historyStack.pop();
+  Store.saveSchedules();
+  toast('Undid last schedule change.','success');
+  return true;
+}
+
+function shareSchedule(id){
+  const s = Store.getSchedule(id);
+  if(!s) return;
+  const payload = {
+    v:1, name:s.name,
+    items: s.items.map(i=>({courseCode:i.courseCode, sectionNumber:i.sectionNumber}))
+  };
+  const text = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast('Share code copied to clipboard.','success'))
+      .catch(()=>{ prompt('Copy this share code:', text); });
+  } else {
+    prompt('Copy this share code:', text);
+  }
+}
+
+function importShareCode(){
+  const text = prompt('Paste a schedule share code:');
+  if(!text) return;
+  try{
+    const payload = JSON.parse(decodeURIComponent(escape(atob(text.trim()))));
+    if(!payload || !payload.items) throw new Error('Invalid code');
+    pushHistory();
+    const sch = Store.createSchedule(payload.name || 'Imported schedule');
+    sch.items = payload.items.map(i=>({courseCode:i.courseCode, sectionNumber:String(i.sectionNumber)}));
+    Store.saveSchedules();
+    toast('Schedule imported.','success');
+    navigate('schedules', {detailId:sch.id});
+  }catch(e){
+    toast('Could not import that code.','error');
+  }
+}
+
+/* ---------------------- Admin auth (client-side gate) ----------------------
+ * IMPORTANT: UI protection only — not true server security.
+ * Password resolution order:
+ *   1) ./admin-config.json on the host (shared for all visitors)
+ *   2) localStorage override (this browser only)
+ *   3) built-in default hash (password: ewu-admin-2026)
+ */
+const ADMIN_PASSWORD_HASH_DEFAULT = '2412d5342f91206645f32b16367eb3fe11bf6296da301b54317c1fabb1ec0214';
+const ADMIN_SESSION_KEY = 'ui:adminSession';
+const ADMIN_HASH_KEY = 'ui:adminPasswordHash';
+const ADMIN_SESSION_MAX_MS = 12 * 60 * 60 * 1000; // 12 hours
+const SHARED_DATASET_URL = './dataset.json';
+const ADMIN_CONFIG_URL = './admin-config.json';
+
+const Admin = {
+  isAdmin: false,
+  failedAttempts: 0,
+  lockedUntil: 0,
+  activeHash: ADMIN_PASSWORD_HASH_DEFAULT,
+  hashSource: 'default', // 'default' | 'local' | 'hosted'
+
+  async sha256(text){
+    const data = new TextEncoder().encode(text);
+    const buf = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  },
+
+  async resolveHash(){
+    // Hosted config wins (same password for every visitor of the site)
+    try{
+      const res = await fetch(ADMIN_CONFIG_URL + '?t=' + Date.now(), {cache:'no-store'});
+      if(res.ok){
+        const cfg = await res.json();
+        if(cfg && typeof cfg.passwordHash === 'string' && /^[a-f0-9]{64}$/i.test(cfg.passwordHash)){
+          this.activeHash = cfg.passwordHash.toLowerCase();
+          this.hashSource = 'hosted';
+          return this.activeHash;
+        }
+      }
+    }catch(e){}
+    // Per-browser override from a previous in-app change
+    try{
+      const local = await Persist.get(ADMIN_HASH_KEY);
+      if(local && typeof local === 'string' && /^[a-f0-9]{64}$/i.test(local)){
+        this.activeHash = local.toLowerCase();
+        this.hashSource = 'local';
+        return this.activeHash;
+      }
+    }catch(e){}
+    this.activeHash = ADMIN_PASSWORD_HASH_DEFAULT;
+    this.hashSource = 'default';
+    return this.activeHash;
+  },
+
+  async restore(){
+    await this.resolveHash();
+    try{
+      const sess = await Persist.get(ADMIN_SESSION_KEY);
+      if(sess && sess.ok && sess.at && (Date.now() - sess.at) < ADMIN_SESSION_MAX_MS){
+        this.isAdmin = true;
+        return true;
+      }
+    }catch(e){}
+    this.isAdmin = false;
+    return false;
+  },
+
+  async login(password){
+    if(Date.now() < this.lockedUntil){
+      const mins = Math.ceil((this.lockedUntil - Date.now())/60000);
+      return {ok:false, reason:`Too many attempts. Try again in ${mins} min.`};
+    }
+    await this.resolveHash();
+    const hash = await this.sha256(String(password||''));
+    if(hash === this.activeHash){
+      this.isAdmin = true;
+      this.failedAttempts = 0;
+      await Persist.set(ADMIN_SESSION_KEY, {ok:true, at: Date.now()});
+      return {ok:true};
+    }
+    this.failedAttempts++;
+    if(this.failedAttempts >= 5){
+      this.lockedUntil = Date.now() + 15*60*1000;
+      this.failedAttempts = 0;
+      return {ok:false, reason:'Too many failed attempts. Locked for 15 minutes.'};
+    }
+    return {ok:false, reason:'Incorrect password.'};
+  },
+
+  async logout(){
+    this.isAdmin = false;
+    await Persist.set(ADMIN_SESSION_KEY, null);
+  },
+
+  async changePassword(currentPassword, newPassword, confirmPassword){
+    if(!this.isAdmin) return {ok:false, reason:'Not logged in as admin.'};
+    if(!newPassword || newPassword.length < 8){
+      return {ok:false, reason:'New password must be at least 8 characters.'};
+    }
+    if(newPassword !== confirmPassword){
+      return {ok:false, reason:'New password and confirmation do not match.'};
+    }
+    if(newPassword === currentPassword){
+      return {ok:false, reason:'New password must be different from the current one.'};
+    }
+    await this.resolveHash();
+    const currentHash = await this.sha256(String(currentPassword||''));
+    if(currentHash !== this.activeHash){
+      return {ok:false, reason:'Current password is incorrect.'};
+    }
+    const newHash = await this.sha256(newPassword);
+    await Persist.set(ADMIN_HASH_KEY, newHash);
+    this.activeHash = newHash;
+    this.hashSource = 'local';
+    // Refresh session timestamp
+    await Persist.set(ADMIN_SESSION_KEY, {ok:true, at: Date.now()});
+    return {ok:true, hash: newHash};
+  },
+
+  downloadConfig(hash){
+    const payload = {
+      passwordHash: hash || this.activeHash,
+      updatedAt: new Date().toISOString(),
+      note: 'Upload this file next to index.html as admin-config.json so the new password works for everyone.'
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'admin-config.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+};
+
+/** Load published course catalog for all visitors (same origin dataset.json). */
+async function loadSharedDataset(){
+  try{
+    const res = await fetch(SHARED_DATASET_URL + '?t=' + Date.now(), {cache:'no-store'});
+    if(!res.ok) return null;
+    const data = await res.json();
+    if(!data || !data.courses) return null;
+    scrubDatasetFaculty(data);
+    return data;
+  }catch(e){
+    return null;
+  }
+}
+
+function exportPublishedDataset(){
+  if(!Store.dataset){ toast('No dataset to publish.','error'); return; }
+  const payload = {
+    fileName: Store.dataset.fileName,
+    pageCount: Store.dataset.pageCount,
+    importedAt: Store.dataset.importedAt,
+    publishedAt: Date.now(),
+    courseCount: Store.dataset.courseCount,
+    sectionCount: Store.dataset.sectionCount,
+    meetingCount: Store.dataset.meetingCount,
+    courses: Store.dataset.courses,
+    needsReview: Store.dataset.needsReview || []
+  };
+  const blob = new Blob([JSON.stringify(payload)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dataset.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Downloaded dataset.json — upload it next to index.html on your host so everyone sees the courses.','success');
+}
+
+/* ---------------------- 4. APPLICATION STORE ---------------------- */
+
+const Store = {
+  dataset: null,        // {fileName, pageCount, importedAt, courses:{}, needsReview:[], stats:{}}
+  schedules: [],         // [{id,name,items:[{courseCode,sectionNumber}],createdAt}]
+  activeScheduleId: null,
+  dayMap: Object.assign({}, DEFAULT_DAY_MAP),
+  route: 'dashboard',
+  routeParam: null,
+  sharedSource: false,  // true when dataset came from ./dataset.json
+
+  async loadAll(){
+    const dm = await Persist.get('settings:dayMap');
+    if(dm) this.dayMap = dm;
+
+    // Prefer published shared catalog so all visitors see the same courses
+    const shared = await loadSharedDataset();
+    if(shared){
+      this.dataset = shared;
+      this.sharedSource = true;
+    } else {
+      const meta = await Persist.get('dataset:meta');
+      const courses = await Persist.get('dataset:courses');
+      const needsReview = await Persist.get('dataset:needsReview');
+      if(meta && courses){
+        this.dataset = Object.assign({}, meta, { courses, needsReview: needsReview || [] });
+        scrubDatasetFaculty(this.dataset);
+        this.sharedSource = false;
+      }
+    }
+
+    const schedules = await Persist.get('schedules');
+    this.schedules = schedules || [];
+    const activeId = await Persist.get('ui:activeScheduleId');
+    this.activeScheduleId = activeId || (this.schedules[0] && this.schedules[0].id) || null;
+
+    // Non-admins never land on upload; admins without data may
+    if(this.dataset) this.route = 'dashboard';
+    else this.route = Admin.isAdmin ? 'upload' : 'dashboard';
+  },
+
+  async saveDataset(){
+    if(!this.dataset) return;
+    const {courses, needsReview, ...meta} = this.dataset;
+    await Persist.set('dataset:meta', meta);
+    await Persist.set('dataset:courses', courses);
+    await Persist.set('dataset:needsReview', needsReview);
+  },
+  async saveSchedules(){ await Persist.set('schedules', this.schedules); },
+  async saveActiveId(){ await Persist.set('ui:activeScheduleId', this.activeScheduleId); },
+  async saveDayMap(){ await Persist.set('settings:dayMap', this.dayMap); },
+
+  getCourseList(){
+    if(!this.dataset) return [];
+    return Object.values(this.dataset.courses);
+  },
+  getCourse(code){ return this.dataset ? this.dataset.courses[code] : null; },
+  getSection(code, secNum){
+    const c = this.getCourse(code);
+    if(!c) return null;
+    return c.sections.find(s=>s.sectionNumber===String(secNum)) || null;
+  },
+  getSchedule(id){ return this.schedules.find(s=>s.id===id) || null; },
+  getActiveSchedule(){ return this.getSchedule(this.activeScheduleId); },
+
+  createSchedule(name){
+    const sch = { id: uid('sch'), name: name || `Schedule ${this.schedules.length+1}`, items: [], createdAt: Date.now() };
+    this.schedules.push(sch);
+    this.activeScheduleId = sch.id;
+    this.saveSchedules(); this.saveActiveId();
+    return sch;
+  },
+  renameSchedule(id, name){
+    const s = this.getSchedule(id); if(!s) return;
+    s.name = name; this.saveSchedules();
+  },
+  deleteSchedule(id){
+    this.schedules = this.schedules.filter(s=>s.id!==id);
+    if(this.activeScheduleId===id) this.activeScheduleId = (this.schedules[0]&&this.schedules[0].id) || null;
+    this.saveSchedules(); this.saveActiveId();
+  }
+};
+
+/* ---------------------- 5. CONFLICT ENGINE ---------------------- */
+
+const Conflicts = {
+  meetingsOverlap(a,b){
+    return a.day===b.day && a.start < b.end && b.start < a.end;
+  },
+  // Check if adding (courseCode, sectionNumber) to schedule is allowed.
+  // Returns {ok:true} or {ok:false, reason, detail}
+  canAdd(schedule, courseCode, sectionNumber){
+    const section = Store.getSection(courseCode, sectionNumber);
+    if(!section) return {ok:false, reason:'not-found', detail:'Section data not found.'};
+
+    // Rule: already in schedule exactly (no-op block)
+    const already = schedule.items.find(i=>i.courseCode===courseCode && i.sectionNumber===String(sectionNumber));
+    if(already) return {ok:false, reason:'duplicate', detail:'This exact section is already in the schedule.'};
+
+    // Rule: same course, different section
+    const sameCourse = schedule.items.find(i=>i.courseCode===courseCode);
+    if(sameCourse){
+      return {ok:false, reason:'same-course', detail:`Cannot add this section. ${courseCode} is already in this schedule (Section ${sameCourse.sectionNumber}). Remove it first to replace.`};
+    }
+
+    // Rule: max 5 courses
+    if(schedule.items.length >= 5){
+      return {ok:false, reason:'max-courses', detail:'Schedule is full. A schedule can contain a maximum of 5 courses.'};
+    }
+
+    // Rule: time conflicts against every existing item
+    for(const item of schedule.items){
+      const other = Store.getSection(item.courseCode, item.sectionNumber);
+      if(!other) continue;
+      for(const mA of section.meetings){
+        for(const mB of other.meetings){
+          if(this.meetingsOverlap(mA,mB)){
+            return {
+              ok:false, reason:'time-conflict',
+              detail:`Time conflict with ${item.courseCode} Section ${item.sectionNumber} on ${mB.day}, ${formatMinutes(mB.start)} – ${formatMinutes(mB.end)}.`,
+              conflictWith: item, meetingA: mA, meetingB: mB
+            };
+          }
+        }
+      }
+    }
+    return {ok:true};
+  },
+  addToSchedule(schedule, courseCode, sectionNumber){
+    const check = this.canAdd(schedule, courseCode, sectionNumber);
+    if(!check.ok) return check;
+    pushHistory();
+    schedule.items.push({courseCode, sectionNumber: String(sectionNumber)});
+    Store.saveSchedules();
+    return {ok:true};
+  },
+  removeFromSchedule(schedule, courseCode){
+    pushHistory();
+    schedule.items = schedule.items.filter(i=>i.courseCode!==courseCode);
+    Store.saveSchedules();
+  },
+  scheduleHasInternalConflicts(schedule){
+    let count = 0;
+    for(let i=0;i<schedule.items.length;i++){
+      for(let j=i+1;j<schedule.items.length;j++){
+        const a = Store.getSection(schedule.items[i].courseCode, schedule.items[i].sectionNumber);
+        const b = Store.getSection(schedule.items[j].courseCode, schedule.items[j].sectionNumber);
+        if(!a||!b) continue;
+        for(const mA of a.meetings) for(const mB of b.meetings) if(this.meetingsOverlap(mA,mB)) count++;
+      }
+    }
+    return count;
+  },
+  scheduleStats(schedule){
+    const daysUsed = new Set();
+    let earliest = null, latest = null, totalMinutes = 0;
+    let fridayCount = 0;
+    for(const item of schedule.items){
+      const sec = Store.getSection(item.courseCode, item.sectionNumber);
+      if(!sec) continue;
+      for(const m of sec.meetings){
+        daysUsed.add(m.day);
+        if(earliest===null || m.start<earliest) earliest = m.start;
+        if(latest===null || m.end>latest) latest = m.end;
+        totalMinutes += (m.end-m.start);
+        if(m.day==='Friday') fridayCount++;
+      }
+    }
+    return {
+      daysUsed: daysUsed.size, earliest, latest, totalMinutes, fridayCount,
+      conflicts: this.scheduleHasInternalConflicts(schedule)
+    };
+  }
+};
+
+/* ---------------------- 6. SMART SCHEDULE GENERATOR ---------------------- */
+
+const Generator = {
+  generate(courseCodes, prefs, maxResults){
+    maxResults = maxResults || 25;
+    const pools = courseCodes.map(code => {
+      const c = Store.getCourse(code);
+      return c ? c.sections : [];
+    });
+    if(pools.some(p=>p.length===0)) return { results: [], truncated:false, note:'One or more selected courses has no sections.' };
+
+    const results = [];
+    let iterations = 0;
+    const MAX_ITER = 400000;
+
+    function overlapsAny(sec, chosen){
+      for(const other of chosen){
+        for(const mA of sec.meetings) for(const mB of other.meetings){
+          if(Conflicts.meetingsOverlap(mA,mB)) return true;
+        }
+      }
+      return false;
+    }
+
+    function backtrack(idx, chosen){
+      if(results.length >= maxResults*6 || iterations > MAX_ITER) return;
+      if(idx===pools.length){
+        results.push(chosen.slice());
+        return;
+      }
+      for(const sec of pools[idx]){
+        iterations++;
+        if(iterations > MAX_ITER) return;
+        if(overlapsAny(sec, chosen)) continue;
+        chosen.push(sec);
+        backtrack(idx+1, chosen);
+        chosen.pop();
+        if(results.length >= maxResults*6) return;
+      }
+    }
+    backtrack(0, []);
+
+    function scoreCombo(combo){
+      const days = new Set();
+      let earliest=1440, latest=0, friday=0;
+      for(const sec of combo) for(const m of sec.meetings){
+        days.add(m.day);
+        if(m.start<earliest) earliest=m.start;
+        if(m.end>latest) latest=m.end;
+        if(m.day==='Friday') friday++;
+      }
+      let score = 0;
+      score += days.size * 100;
+      if(prefs.noFriday) score += friday*1000;
+      if(prefs.earliestFinish) score += latest;
+      if(prefs.preferredStart!==undefined && prefs.preferredStart!==null) score += Math.abs(earliest-prefs.preferredStart);
+      return score;
+    }
+
+    combosRanked = results
+      .map(combo => ({combo, score: scoreCombo(combo)}))
+      .sort((a,b)=>a.score-b.score)
+      .slice(0, maxResults);
+
+    return { results: combosRanked, truncated: iterations>MAX_ITER, totalFound: results.length };
+  }
+};
+var combosRanked = [];
+
+/* ---------------------- 7. UI SHELL & ROUTER ---------------------- */
+
+const NAV_ITEMS = [
+  {id:'dashboard', label:'Dashboard', icon:iconHome(), public:true},
+  {id:'courses', label:'Courses', icon:iconBook(), public:true},
+  {id:'schedules', label:'My Schedules', icon:iconCal(), public:true},
+  {id:'routine', label:'Routine Generator', icon:iconWand(), public:true},
+  {id:'compare', label:'Compare', icon:iconLayers(), public:true},
+  {id:'upload', label:'Import PDF', icon:iconUpload(), adminOnly:true},
+  {id:'review', label:'Needs Review', icon:iconFlag(), adminOnly:true},
+  {id:'settings', label:'Settings', icon:iconGear(), public:true},
+];
+
+function iconSvg(paths, size){ size = size||18; return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`; }
+function iconHome(){ return iconSvg('<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>'); }
+function iconBook(){ return iconSvg('<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17Z"/><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>'); }
+function iconCal(){ return iconSvg('<rect x="3" y="4.5" width="18" height="16" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>'); }
+function iconWand(){ return iconSvg('<path d="m5 21 14-14"/><path d="M14 4l1.5 1.5M19 9l1.5 1.5M9 4 7 6M4 14l-1.5 1.5"/>'); }
+function iconLayers(){ return iconSvg('<path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/>'); }
+function iconUpload(){ return iconSvg('<path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>'); }
+function iconFlag(){ return iconSvg('<path d="M5 21V4"/><path d="M5 4h13l-3 4 3 4H5"/>'); }
+function iconGear(){ return iconSvg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9c.2.6.7 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/>'); }
+function iconSearch(){ return iconSvg('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>', 16); }
+function iconPlus(){ return iconSvg('<path d="M12 5v14M5 12h14"/>', 15); }
+function iconTrash(){ return iconSvg('<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', 14); }
+function iconMoon(){ return iconSvg('<path d="M21 14.3A8.5 8.5 0 1 1 9.7 3a7 7 0 0 0 11.3 11.3Z"/>', 18); }
+function iconSun(){ return iconSvg('<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>', 18); }
+
+let editingScheduleModal = null;
+let sectionModalTarget = null; // {code}
+let addDropdownOpenFor = null; // section key currently showing dropdown
+
+function render(){
+  const app = document.getElementById('app');
+
+  // --- preserve focus + text selection across re-render ---
+  const activeEl = document.activeElement;
+  let focusInfo = null;
+  if(activeEl && activeEl.id && app.contains(activeEl)){
+    focusInfo = { id: activeEl.id, start: activeEl.selectionStart, end: activeEl.selectionEnd };
+  }
+
+  // --- preserve scroll position of the main content pane + schedule rail ---
+  const prevMain = document.querySelector('.main');
+  const prevRail = document.querySelector('.schedule-rail');
+  const mainScroll = prevMain ? prevMain.scrollTop : 0;
+  const railScroll = prevRail ? prevRail.scrollTop : 0;
+
+  app.innerHTML = `
+    ${renderTopbar()}
+    <div class="body-row">
+      ${renderNavRail()}
+      <div class="main ${['dashboard','upload','settings'].includes(Store.route)?'main-narrow':''}">
+        ${renderRoute()}
+      </div>
+      ${Store.dataset && !['upload'].includes(Store.route) ? renderScheduleRail() : ''}
+    </div>
+  `;
+  wireGlobalEvents();
+
+  const newMain = document.querySelector('.main');
+  if(newMain) newMain.scrollTop = mainScroll;
+  const newRail = document.querySelector('.schedule-rail');
+  if(newRail) newRail.scrollTop = railScroll;
+
+  if(focusInfo){
+    const el = document.getElementById(focusInfo.id);
+    if(el && typeof el.focus === 'function'){
+      el.focus();
+      if(typeof focusInfo.start === 'number' && el.setSelectionRange){
+        try{ el.setSelectionRange(focusInfo.start, focusInfo.end); }catch(e){ /* not a text input */ }
+      }
+    }
+  }
+}
+
+function renderTopbar(){
+  return `
+  <div class="topbar">
+    <div class="brand"><span class="mark">CP</span> EWU Course Planner</div>
+    ${Admin.isAdmin ? `<div class="semester-chip" style="background:var(--amber-tint);color:var(--amber);">Admin</div>` : ''}
+    ${Store.dataset ? `<div class="semester-chip" title="${escapeHtml(Store.dataset.fileName||'')}">${escapeHtml(Store.dataset.fileName||'Dataset')}${Store.sharedSource?' · shared':''}</div>` : ''}
+    ${Store.dataset ? `
+    <div class="search-wrap">
+      ${iconSearch()}
+      <input class="global-search" id="global-search-input" placeholder="Search course code, faculty, or department…" value="${escapeHtml(Store.routeParam && Store.routeParam.q || '')}">
+    </div>` : '<div class="topbar-spacer"></div>'}
+    <div class="topbar-spacer"></div>
+    <button class="icon-btn theme-toggle" id="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+      <span class="icon-moon">${iconMoon()}</span>
+      <span class="icon-sun">${iconSun()}</span>
+    </button>
+  </div>`;
+}
+
+function renderNavRail(){
+  return `<div class="navrail">
+    ${NAV_ITEMS.filter(n=>!n.adminOnly || Admin.isAdmin).map(n=>`
+      <button class="nav-item ${Store.route===n.id?'active':''}" data-nav="${n.id}">${n.icon}<span>${n.label}</span></button>
+    `).join('')}
+  </div>`;
+}
+
+function renderScheduleRail(){
+  const active = Store.getActiveSchedule();
+  return `<div class="schedule-rail">
+    <h3>Current Schedule</h3>
+    <select class="rail-select" id="rail-schedule-select">
+      <option value="" ${!active?'selected':''}>— Select a schedule —</option>
+      ${Store.schedules.map(s=>`<option value="${s.id}" ${active&&active.id===s.id?'selected':''}>${escapeHtml(s.name)}</option>`).join('')}
+    </select>
+    <button class="btn btn-sm" id="rail-new-schedule" style="width:100%;justify-content:center;">${iconPlus()} New schedule</button>
+    ${active ? `
+      <div class="rail-progress"><div style="width:${(active.items.length/5)*100}%"></div></div>
+      <div class="rail-count">${active.items.length} / 5 courses</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px;">
+        ${active.items.length ? active.items.map(item=>{
+          const sec = Store.getSection(item.courseCode, item.sectionNumber);
+          return `<div class="rail-item">
+            <button class="rm-btn" data-remove-item="${item.courseCode}" title="Remove">${iconTrash()}</button>
+            <div class="code">${escapeHtml(item.courseCode)}</div>
+            <div class="sec">Section ${escapeHtml(item.sectionNumber)}${sec&&sec.faculty?' · '+escapeHtml(sec.faculty):''}</div>
+            <div class="meet">${sec ? sec.meetings.map(m=>`${dayShortFromFull(m.day)} ${formatMinutes(m.start)}-${formatMinutes(m.end)}`).join('<br>') : ''}</div>
+          </div>`;
+        }).join('') : '<div class="rail-empty">No courses added yet. Browse courses and add sections here.</div>'}
+      </div>
+      <button class="btn btn-sm" data-nav="schedules" data-schedule-focus="${active.id}" style="width:100%;justify-content:center;margin-top:4px;">View full schedule</button>
+    ` : ''}
+  </div>`;
+}
+
+function renderRoute(){
+  // Admin-only routes
+  if((Store.route==='upload' || Store.route==='review') && !Admin.isAdmin){
+    Store.route = Store.dataset ? 'dashboard' : 'settings';
+  }
+  // Without a dataset, public users browse empty state; admins can import
+  if(!Store.dataset){
+    if(!Admin.isAdmin && !['routine','settings','dashboard'].includes(Store.route)){
+      Store.route = 'dashboard';
+    } else if(Admin.isAdmin && !['upload','routine','settings','dashboard','review'].includes(Store.route)){
+      Store.route = 'upload';
+    }
+  }
+  switch(Store.route){
+    case 'upload': return renderUpload();
+    case 'dashboard': return renderDashboard();
+    case 'courses': return renderCourses();
+    case 'schedules': return renderSchedules();
+    case 'routine': return renderRoutine();
+    case 'compare': return renderCompare();
+    case 'review': return renderReview();
+    case 'settings': return renderSettings();
+    default: return renderDashboard();
+  }
+}
+
+/* ---- Upload view (admin only) ---- */
+function renderUpload(){
+  if(!Admin.isAdmin){
+    return renderEmptyState('Admin only','Importing course lists is restricted to the site admin.');
+  }
+  return `
+  <div class="upload-shell">
+    <h1 style="font-size:28px;margin-bottom:8px;">Import a course-offering PDF</h1>
+    <p style="color:var(--ink-soft);margin-bottom:24px;">Admin only. Upload the official offerings list, then use <b>Publish dataset</b> in Settings so every visitor loads the same courses from <span class="mono">dataset.json</span>.</p>
+    <div class="dropzone" id="dropzone">
+      ${iconSvg('<path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>', 36)}
+      <div style="font-weight:600;margin-top:8px;">Drag &amp; drop your PDF here</div>
+      <div style="color:var(--ink-soft);margin:6px 0;">or</div>
+      <button class="btn btn-primary" id="choose-pdf-btn">Choose PDF</button>
+      <input type="file" id="pdf-input" accept="application/pdf" class="hidden">
+      <div class="hint">Supported format: PDF · Parsing happens locally in your browser</div>
+    </div>
+    <div id="upload-progress" class="hidden" style="margin-top:22px;text-align:left;">
+      <div style="display:flex;justify-content:space-between;font-size:12.5px;color:var(--ink-soft);">
+        <span id="upload-status">Parsing PDF…</span><span id="upload-page-count"></span>
+      </div>
+      <div class="progress-bar"><div id="upload-progress-fill" style="width:0%"></div></div>
+    </div>
+    ${Store.dataset ? `<p style="margin-top:26px;font-size:12.5px;color:var(--ink-soft);">Importing a new PDF creates a fresh dataset separate from “${escapeHtml(Store.dataset.fileName)}”. Your existing schedules stay intact, but sections tied only to the old dataset may no longer resolve.</p>` : ''}
+  </div>`;
+}
+
+/* ---- Dashboard ---- */
+function renderDashboard(){
+  const d = Store.dataset;
+  const active = Store.getActiveSchedule();
+  return `
+    <div class="page-header">
+      <div><h1>Welcome</h1><div class="sub">${d ? escapeHtml(d.fileName) + (Store.sharedSource ? ' · shared catalog' : '') : (Admin.isAdmin ? 'No dataset yet — import a PDF as admin' : 'Course catalog not published yet. Check back soon.')}</div></div>
+    </div>
+    ${!d ? `<div class="card" style="padding:18px;margin-bottom:16px;"><p class="sub" style="margin:0;">${Admin.isAdmin ? 'Go to Import PDF, process the offerings list, then publish dataset.json to your host.' : 'The admin has not published the course list yet. You can still use Routine Generator with your advising slip.'}</p></div>` : ''}
+    <div class="stat-grid">
+      <div class="card stat-card"><div class="num mono">${d?d.courseCount:0}</div><div class="label">Courses loaded</div></div>
+      <div class="card stat-card"><div class="num mono">${d?d.sectionCount:0}</div><div class="label">Total sections</div></div>
+      <div class="card stat-card"><div class="num mono">${d?d.meetingCount:0}</div><div class="label">Class meetings</div></div>
+      <div class="card stat-card"><div class="num mono">${Store.schedules.length}</div><div class="label">My schedules</div></div>
+      <div class="card stat-card"><div class="num mono">${active?active.items.length+' / 5':'—'}</div><div class="label">Current schedule</div></div>
+      ${Admin.isAdmin ? `<div class="card stat-card"><div class="num mono">${d&&d.needsReview?d.needsReview.length:0}</div><div class="label">Rows needing review</div></div>` : `<div class="card stat-card"><div class="num mono">${Store.schedules.reduce((n,s)=>n+s.items.length,0)}</div><div class="label">Sections saved</div></div>`}
+    </div>
+    <div class="quick-actions">
+      <button class="btn btn-primary" data-nav="courses">${iconBook()} Browse courses</button>
+      <button class="btn" data-action="new-schedule">${iconPlus()} Create schedule</button>
+      <button class="btn" data-nav="routine">${iconWand()} Routine Generator</button>
+      ${Admin.isAdmin ? `<button class="btn" data-nav="upload">${iconUpload()} Import PDF</button>` : ''}
+    </div>
+  `;
+}
+
+/* ---- Courses browse ---- */
+let courseFilters = { q:'', faculty:'', day:'', limit:60 };
+
+function facultyCode(s){
+  if(!s) return null;
+  // Prefer sanitized code; fall back to raw short uppercase so search still works
+  const cleaned = sanitizeFaculty(s.faculty);
+  if(cleaned) return cleaned;
+  const raw = String(s.faculty||'').trim();
+  if(/^[A-Za-z]{2,8}$/.test(raw)) return raw.toUpperCase();
+  return null;
+}
+
+function sectionMatchesFilters(courseCode, s, q, faculty, day){
+  if(faculty){
+    const f = facultyCode(s);
+    if(!f || f.toLowerCase() !== faculty.toLowerCase()) return false;
+  }
+  if(day){
+    const dayWant = String(day).toLowerCase();
+    const hit = (s.meetings||[]).some(m=>{
+      const md = String(m.day||'').toLowerCase();
+      // full name (sunday) or short (sun) or letter
+      return md === dayWant
+        || md.startsWith(dayWant.slice(0,3))
+        || dayShortFromFull(m.day).toLowerCase() === dayWant
+        || dayShortFromFull(m.day).toLowerCase() === dayWant.slice(0,3);
+    });
+    if(!hit) return false;
+  }
+  if(q){
+    const qq = q.toLowerCase().trim();
+    if(!qq) return true;
+    const fac = facultyCode(s) || '';
+    const inCode = courseCode.toLowerCase().includes(qq);
+    const inFaculty = fac.toLowerCase().includes(qq) || String(s.faculty||'').toLowerCase().includes(qq);
+    const inSection = String(s.sectionNumber||'').toLowerCase().includes(qq);
+    const inRoom = (s.meetings||[]).some(m=>m.room && String(m.room).toLowerCase().includes(qq));
+    // For text search: match if this section hits faculty/section/room OR the course code matches
+    // (course-code hits are allowed so searching CSE110 still lists its sections)
+    if(!(inCode || inFaculty || inSection || inRoom)) return false;
+  }
+  return true;
+}
+
+function renderCourses(){
+  const q = (Store.routeParam && Store.routeParam.q) || courseFilters.q || '';
+  courseFilters.q = q;
+  const faculty = courseFilters.faculty || '';
+  const day = courseFilters.day || '';
+
+  // Build list of courses that still have at least one matching section; attach filtered sections
+  let list = Store.getCourseList().map(course=>{
+    const sections = (course.sections||[]).filter(s=>sectionMatchesFilters(course.code, s, q, faculty, day));
+    return { code: course.code, sections };
+  }).filter(c=>c.sections.length > 0)
+    .sort((a,b)=>a.code.localeCompare(b.code));
+
+  const total = list.length;
+  const shown = list.slice(0, courseFilters.limit);
+
+  const faculties = new Set();
+  Store.getCourseList().forEach(c=>(c.sections||[]).forEach(s=>{
+    const f = facultyCode(s);
+    if(f) faculties.add(f);
+  }));
+
+  const sectionCount = list.reduce((n,c)=>n+c.sections.length, 0);
+
+  return `
+  <div class="page-header">
+    <div><h1>Courses</h1><div class="sub">${total} course${total===1?'':'s'} · ${sectionCount} section${sectionCount===1?'':'s'} match your filters</div></div>
+  </div>
+  <div class="filter-bar">
+    <input class="search-input" id="course-search" placeholder="Search by code, faculty, section, or room…" value="${escapeHtml(q)}">
+    <select id="filter-faculty"><option value="">All faculty</option>${[...faculties].sort().map(f=>`<option value="${escapeHtml(f)}" ${courseFilters.faculty===f?'selected':''}>${escapeHtml(f)}</option>`).join('')}</select>
+    <select id="filter-day"><option value="">All days</option>${DAY_ORDER.map(d=>`<option value="${d}" ${courseFilters.day===d?'selected':''}>${d}</option>`).join('')}</select>
+    <button class="btn btn-ghost btn-sm" id="clear-filters">Clear filters</button>
+  </div>
+  <div id="course-list">${shown.map(renderCourseCard).join('') || renderEmptyState('No courses match','Try a different search term or clear your filters.')}</div>
+  ${total>shown.length ? `<div style="text-align:center;margin-top:10px;"><button class="btn" id="load-more-courses">Load more (${total-shown.length} remaining)</button></div>` : ''}
+  `;
+}
+
+function renderEmptyState(title, sub){
+  return `<div class="empty-state"><h3>${escapeHtml(title)}</h3><p>${escapeHtml(sub)}</p></div>`;
+}
+
+function renderCourseCard(course){
+  const active = Store.getActiveSchedule();
+  return `
+  <div class="card course-card">
+    <div class="head">
+      <div class="code">${escapeHtml(course.code)}</div>
+      <div class="count">${course.sections.length} section${course.sections.length===1?'':'s'}</div>
+    </div>
+    <div class="section-list">
+      ${course.sections.map(s=>renderSectionRow(course.code, s, active)).join('')}
+    </div>
+  </div>`;
+}
+
+function capacityPillHtml(s){
+  if(!s.capacity || !s.capacity.total) return `<span class="capacity-pill">Capacity n/a</span>`;
+  const left = Math.max(0, s.capacity.total - s.capacity.enrolled);
+  const pct = left / s.capacity.total;
+  let cls = 'capacity-pill';
+  if(pct <= 0.05) cls += ' seats-critical';
+  else if(pct <= 0.2) cls += ' seats-low';
+  else cls += ' seats-ok';
+  return `<span class="${cls}" title="${left} seats left">${s.capacity.enrolled} / ${s.capacity.total} seats</span>`;
+}
+
+function renderSectionRow(code, s, active){
+  const key = code+'::'+s.sectionNumber;
+  const inActive = active && active.items.some(i=>i.courseCode===code && i.sectionNumber===s.sectionNumber);
+  const fac = sanitizeFaculty(s.faculty);
+  // Conflict check against active schedule
+  let conflictInfo = null;
+  if(active && !inActive){
+    const check = Conflicts.canAdd(active, code, s.sectionNumber);
+    if(!check.ok && check.reason==='time-conflict') conflictInfo = check;
+  }
+  const hasLab = s.meetings.some(m=>isLabMeeting(m, code));
+  const hasClass = s.meetings.some(m=>!isLabMeeting(m, code));
+  return `
+  <div class="section-row ${inActive?'in-active-schedule':''} ${conflictInfo?'has-conflict':''}">
+    <div class="section-top">
+      <div class="section-id">
+        <span class="section-number">Section ${escapeHtml(s.sectionNumber)}</span>
+        ${fac
+          ? `<span class="chip chip-faculty">${escapeHtml(fac)}</span>`
+          : `<span class="chip">Faculty not listed</span>`}
+        ${hasClass ? `<span class="chip chip-class">Class</span>` : ''}
+        ${hasLab ? `<span class="chip chip-lab">Lab</span>` : ''}
+        ${inActive ? `<span class="chip chip-added">In current schedule</span>` : ''}
+        ${conflictInfo ? `<span class="chip chip-conflict" title="${escapeHtml(conflictInfo.detail||'')}">Conflicts</span>` : ''}
+      </div>
+      <div class="section-actions">
+        ${capacityPillHtml(s)}
+        <div class="dropdown">
+          <button class="btn btn-sm ${conflictInfo?'btn-danger':'btn-primary'}" data-add-toggle="${key}" ${inActive?'disabled':''}>
+            ${inActive?'Added':(conflictInfo?'Conflict — add anyway':iconPlus()+' Add to Schedule')}
+          </button>
+          ${addDropdownOpenFor===key ? renderAddDropdown(code, s.sectionNumber, conflictInfo) : ''}
+        </div>
+      </div>
+    </div>
+    ${conflictInfo ? `<div class="conflict-hint">${escapeHtml(conflictInfo.detail||'Time conflict with current schedule.')}</div>` : ''}
+    <div class="meetings-table">
+      ${s.meetings.length ? s.meetings.map(m=>{
+        const kind = meetingTypeLabel(m, code);
+        const dur = Math.round(((m.end-m.start)/60)*10)/10;
+        return `
+        <div class="meeting-row">
+          <span class="day-pill">${dayShortFromFull(m.day)}</span>
+          <span class="meeting-time mono">${formatMinutes(m.start)} – ${formatMinutes(m.end)}</span>
+          <span class="chip ${kind==='Lab'?'chip-lab':'chip-class'}" style="font-size:10px;padding:2px 8px;">${kind}${dur?(' · '+dur+'h'):''}</span>
+          ${m.room ? `<span class="meeting-room">Room ${escapeHtml(m.room)}</span>` : '<span class="meeting-room muted">Room not listed</span>'}
+        </div>`;
+      }).join('') : '<div class="meeting-row muted">No timing data parsed for this section</div>'}
+    </div>
+  </div>`;
+}
+
+function renderAddDropdown(code, sectionNumber, conflictInfo){
+  return `<div class="dropdown-menu" data-dropdown-menu>
+    ${conflictInfo?`<div style="font-size:12px;color:var(--brick);padding:6px 10px;">${escapeHtml(conflictInfo.detail||'Time conflict')}</div><div class="divider"></div>`:''}
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);padding:4px 10px;">Add to</div>
+    ${Store.schedules.map(s=>{
+      const check = Conflicts.canAdd(s, code, sectionNumber);
+      const label = check.ok ? '' : (check.reason==='time-conflict'?' ⚠ conflict': check.reason==='limit'?' (full)':'');
+      return `<button data-add-to-schedule="${s.id}" data-code="${escapeHtml(code)}" data-section="${escapeHtml(sectionNumber)}">${s.id===Store.activeScheduleId?'● ':'○ '}${escapeHtml(s.name)} (${s.items.length}/5)${label}</button>`;
+    }).join('')}
+    ${Store.schedules.length?'<div class="divider"></div>':''}
+    <button data-add-create-new data-code="${escapeHtml(code)}" data-section="${escapeHtml(sectionNumber)}">${iconPlus()} Create new schedule</button>
+  </div>`;
+}
+
+/* ---- Course detail modal ---- */
+function renderCourseModal(){
+  return '';
+}
+
+/* ---- Schedules ---- */
+function renderSchedules(){
+  return `
+  <div class="page-header">
+    <div><h1>My Schedules</h1><div class="sub">Create as many schedule drafts as you like, then compare them.</div></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" id="import-share-btn">Import share code</button>
+      <button class="btn btn-primary" data-action="new-schedule">${iconPlus()} Create new schedule</button>
+    </div>
+  </div>
+  ${Store.schedules.length ? Store.schedules.map(renderScheduleCard).join('') : renderEmptyState('No schedules yet','Create your first schedule to start adding sections.')}
+  ${Store.routeParam && Store.routeParam.detailId ? renderScheduleDetail(Store.routeParam.detailId) : ''}
+  `;
+}
+
+function renderScheduleCard(s){
+  const stats = Conflicts.scheduleStats(s);
+  return `
+  <div class="card schedule-card">
+    <div>
+      <div class="name">${escapeHtml(s.name)}</div>
+      <div class="meta">${s.items.length} / 5 courses · ${stats.conflicts} conflict${stats.conflicts===1?'':'s'} · ${stats.daysUsed} day${stats.daysUsed===1?'':'s'} on campus</div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-sm" data-view-schedule="${s.id}">Open</button>
+      <button class="btn btn-sm" data-rename-schedule="${s.id}">Rename</button>
+      <button class="btn btn-sm btn-danger" data-delete-schedule="${s.id}">${iconTrash()} Delete</button>
+    </div>
+  </div>`;
+}
+
+function freeSlotsForSchedule(schedule){
+  // Largest free blocks per day between 8:00–20:00 excluding meetings
+  const dayStart = 8*60, dayEnd = 20*60;
+  const byDay = {};
+  DAY_ORDER.forEach(d=> byDay[d]=[]);
+  for(const item of schedule.items){
+    const sec = Store.getSection(item.courseCode, item.sectionNumber);
+    if(!sec) continue;
+    sec.meetings.forEach(m=>{ if(byDay[m.day]) byDay[m.day].push({start:m.start,end:m.end}); });
+  }
+  const out = {};
+  for(const day of DAY_ORDER){
+    const busy = (byDay[day]||[]).slice().sort((a,b)=>a.start-b.start);
+    const free = [];
+    let cursor = dayStart;
+    for(const b of busy){
+      if(b.start > cursor) free.push({start:cursor, end:b.start});
+      cursor = Math.max(cursor, b.end);
+    }
+    if(cursor < dayEnd) free.push({start:cursor, end:dayEnd});
+    out[day] = free.filter(f=>(f.end-f.start)>=30); // at least 30 min
+  }
+  return out;
+}
+
+function renderScheduleDetail(id){
+  const s = Store.getSchedule(id);
+  if(!s) return '';
+  const stats = Conflicts.scheduleStats(s);
+  return `
+  <div class="card" style="padding:20px;margin-top:20px;">
+    <div class="page-header" style="margin-bottom:14px;">
+      <div><h2 style="font-family:var(--font-display);font-size:20px;">${escapeHtml(s.name)}</h2>
+        <div class="sub">${s.items.length}/5 courses · ${stats.daysUsed} days · ${(stats.totalMinutes/60).toFixed(1)}h/week ${stats.earliest!==null?'· earliest '+formatMinutes(stats.earliest):''} ${stats.latest!==null?'· latest '+formatMinutes(stats.latest):''} ${stats.conflicts?('· <span style="color:var(--brick);font-weight:600;">'+stats.conflicts+' conflict(s)</span>'):''}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm" data-share-schedule="${s.id}">Share</button>
+        <button class="btn btn-sm" data-export-csv="${s.id}">Export CSV</button>
+        <button class="btn btn-sm btn-primary" data-export-png="${s.id}">Export as PNG</button>
+      </div>
+    </div>
+    <div id="schedule-export-root" data-schedule-export="${s.id}">
+      <table class="data-table" style="margin-bottom:16px;">
+        <thead><tr><th>Course</th><th>Section</th><th>Faculty</th><th>Meetings</th><th>Room</th></tr></thead>
+        <tbody>
+        ${s.items.map(item=>{
+          const sec = Store.getSection(item.courseCode, item.sectionNumber);
+          if(!sec) return `<tr><td class="mono">${escapeHtml(item.courseCode)}</td><td colspan="4" style="color:var(--brick);">Section data unavailable</td></tr>`;
+          const fac = sanitizeFaculty(sec.faculty);
+          return `<tr>
+            <td class="mono">${escapeHtml(item.courseCode)}</td>
+            <td>${escapeHtml(sec.sectionNumber)}</td>
+            <td>${fac?escapeHtml(fac):'Not Assigned'}</td>
+            <td class="mono">${sec.meetings.map(m=>{
+              const kind = meetingTypeLabel(m, item.courseCode);
+              return `${dayShortFromFull(m.day)} ${formatMinutes(m.start)}-${formatMinutes(m.end)} <span style="opacity:.7">(${kind})</span>`;
+            }).join('<br>')}</td>
+            <td>${[...new Set(sec.meetings.map(m=>m.room).filter(Boolean))].join(', ')||'—'}</td>
+          </tr>`;
+        }).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--ink-soft);">No courses added yet.</td></tr>`}
+        </tbody>
+      </table>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0 10px;">
+        <h3 style="font-size:15px;margin:0;">Weekly Timetable</h3>
+        <span class="sub" style="font-size:12px;">Gray labels = free gap between classes</span>
+      </div>
+      ${renderTimetable(s)}
+    </div>
+    <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
+      ${s.items.map(item=>`<button class="btn btn-sm btn-danger" data-remove-from-schedule="${s.id}" data-code="${escapeHtml(item.courseCode)}">Remove ${escapeHtml(item.courseCode)}</button>`).join('')}
+      <button class="btn btn-sm" data-undo-schedule title="Undo last change">Undo</button>
+    </div>
+  </div>`;
+}
+
+function formatGapShort(mins){
+  if(mins==null || mins<=0) return '';
+  const h = Math.floor(mins/60);
+  const m = mins % 60;
+  if(h && m){
+    const decimal = Math.round((mins/60)*10)/10;
+    return decimal + 'h';
+  }
+  if(h) return h + 'h';
+  return m + 'm';
+}
+
+/** Compute tight time window + active days for a set of blocks. */
+function computeTimetableLayout(blocks, opts){
+  opts = opts || {};
+  const hourHeight = opts.hourHeight || 72;
+  const headH = opts.headH || 44;
+  const timeCol = opts.timeCol || 80;
+  const hideEmptyDays = opts.hideEmptyDays !== false;
+
+  let startHour = 8, endHour = 21;
+  if(blocks.length){
+    const minM = Math.min(...blocks.map(b=>b.start));
+    const maxM = Math.max(...blocks.map(b=>b.end));
+    startHour = Math.max(7, Math.floor(minM/60) - (minM%60===0?0:0));
+    // pad half hour above first class
+    startHour = Math.max(7, Math.floor((minM - 15)/60));
+    endHour = Math.min(22, Math.ceil((maxM + 15)/60));
+    if(endHour <= startHour) endHour = startHour + 1;
+  }
+
+  let days = DAY_ORDER.slice();
+  if(hideEmptyDays && blocks.length){
+    const used = new Set(blocks.map(b=>b.day));
+    const filtered = DAY_ORDER.filter(d=>used.has(d));
+    if(filtered.length) days = filtered;
+  }
+
+  return { startHour, endHour, hourHeight, headH, timeCol, days };
+}
+
+function renderTimetableGridHTML(layout){
+  const {startHour, endHour, hourHeight, headH, timeCol, days} = layout;
+  const rows = endHour - startHour;
+  const minCol = Math.max(140, Math.floor(720 / Math.max(days.length,1)));
+  const gridCols = `${timeCol}px repeat(${days.length}, minmax(${minCol}px, 1fr))`;
+  const minW = timeCol + days.length * minCol;
+  let grid = `<div class="timetable-wrap"><div class="timetable" style="grid-template-columns:${gridCols};grid-template-rows:${headH}px repeat(${rows},${hourHeight}px);min-width:${minW}px;">`;
+  grid += `<div class="tt-head" style="border-right:2px solid var(--line-strong);"></div>`;
+  days.forEach(d=> grid += `<div class="tt-head">${DAY_SHORT[d]}</div>`);
+  for(let h=startHour; h<endHour; h++){
+    const label = (h%12===0?12:h%12) + (h<12?' AM':' PM');
+    grid += `<div class="tt-time">${label}</div>`;
+    days.forEach(()=>{ grid += `<div class="tt-cell"></div>`; });
+  }
+  grid += `</div></div>`;
+  return grid;
+}
+
+function placeBlocksOnTimetable(timetableEl, blocks, layout){
+  if(!timetableEl) return;
+  const {startHour, hourHeight, headH, timeCol, days} = layout;
+  const dayIndex = {};
+  days.forEach((d,i)=> dayIndex[d]=i);
+  const rect = timetableEl.getBoundingClientRect();
+  const colWidth = (rect.width - timeCol) / Math.max(days.length, 1);
+  timetableEl.style.position = 'relative';
+
+  blocks.forEach(b=>{
+    if(dayIndex[b.day]===undefined) return;
+    const top = headH + ((b.start/60 - startHour) * hourHeight);
+    const height = Math.max(36, ((b.end-b.start)/60) * hourHeight - 4);
+    const left = timeCol + dayIndex[b.day]*colWidth;
+    const el = document.createElement('div');
+    const isLab = isLabMeeting(b, b.courseCode);
+    el.className = 'tt-block' + (b.conflict?' conflict':'') + (isLab && !b.conflict?' lab-block':'');
+    el.style.top = top+'px';
+    el.style.height = height+'px';
+    el.style.left = (left+5)+'px';
+    el.style.width = (colWidth-10)+'px';
+    const timeLabel = `${formatMinutes(b.start)} – ${formatMinutes(b.end)}`;
+    const kind = isLab ? 'Lab' : 'Class';
+    const roomLine = b.room ? escapeHtml(b.room) : '';
+    const secLine = (b.section && b.section !== '—') ? 'Sec ' + escapeHtml(b.section) : '';
+    el.innerHTML =
+      `<div class="c">${escapeHtml(b.courseCode)}</div>` +
+      `<div class="tt-time-range">${escapeHtml(timeLabel)}</div>` +
+      `<div class="tt-meta">${secLine}${secLine && roomLine ? ' · ' : ''}${roomLine}</div>` +
+      `<div class="tt-kind">${kind}</div>`;
+    el.title = `${b.courseCode} · ${kind} · ${dayShortFromFull(b.day)} · ${timeLabel}${b.room?' · '+b.room:''}`;
+    timetableEl.appendChild(el);
+  });
+
+  // Gap labels
+  const byDay = {};
+  blocks.forEach(b=>{
+    if(!byDay[b.day]) byDay[b.day] = [];
+    byDay[b.day].push(b);
+  });
+  Object.keys(byDay).forEach(day=>{
+    if(dayIndex[day]===undefined) return;
+    const list = byDay[day].slice().sort((a,b)=>a.start-b.start);
+    for(let i=0;i<list.length-1;i++){
+      const gapMins = list[i+1].start - list[i].end;
+      if(gapMins < 20) continue;
+      const top = headH + ((list[i].end/60 - startHour) * hourHeight) + 2;
+      const height = Math.max(28, (gapMins/60) * hourHeight - 6);
+      const left = timeCol + dayIndex[day]*colWidth;
+      const gap = document.createElement('div');
+      gap.className = 'tt-gap';
+      gap.style.top = top+'px';
+      gap.style.height = height+'px';
+      gap.style.left = (left+10)+'px';
+      gap.style.width = (colWidth-20)+'px';
+      gap.innerHTML = `<span class="gap-label">FREE</span>${formatGapShort(gapMins)}`;
+      gap.title = 'Free gap: ' + formatGapMinutes(gapMins);
+      timetableEl.appendChild(gap);
+    }
+  });
+}
+
+function timetableLegendHTML(){
+  return `<div class="tt-legend">
+    <div class="tt-legend-item"><span class="tt-legend-swatch"></span> Class</div>
+    <div class="tt-legend-item"><span class="tt-legend-swatch lab"></span> Lab</div>
+    <div class="tt-legend-item"><span class="tt-legend-swatch gap"></span> Free gap</div>
+  </div>`;
+}
+
+function renderTimetable(schedule){
+  let blocks = [];
+  schedule.items.forEach(item=>{
+    const sec = Store.getSection(item.courseCode, item.sectionNumber);
+    if(!sec) return;
+    sec.meetings.forEach(m=>{ blocks.push({ courseCode:item.courseCode, section:sec.sectionNumber, ...m }); });
+  });
+  blocks.forEach((b,i)=>{
+    b.conflict = blocks.some((o,j)=> j!==i && o.day===b.day && Conflicts.meetingsOverlap(b,o));
+  });
+  const layout = computeTimetableLayout(blocks, { hourHeight: 72, hideEmptyDays: true });
+  const grid = renderTimetableGridHTML(layout);
+  window.__pendingTimetableBlocks = window.__pendingTimetableBlocks || {};
+  window.__pendingTimetableBlocks[schedule.id] = { blocks, layout };
+  return `<div data-timetable-id="${schedule.id}">${timetableLegendHTML()}${grid}</div>`;
+}
+
+function placeTimetableBlocks(){
+  Object.keys(window.__pendingTimetableBlocks||{}).forEach(schId=>{
+    const container = document.querySelector(`[data-timetable-id="${schId}"]`);
+    if(!container) return;
+    const data = window.__pendingTimetableBlocks[schId];
+    const timetableEl = container.querySelector('.timetable');
+    placeBlocksOnTimetable(timetableEl, data.blocks, data.layout);
+  });
+}
+
+/* ---- Routine Generator (advising slip → weekly routine) ---- */
+let routineState = { items: null, meta: null, fileName: null };
+
+function renderRoutine(){
+  return `
+  <div class="page-header">
+    <div>
+      <h1>Routine Generator</h1>
+      <div class="sub">Upload your Advising / Deposit Slip (PDF or Excel). We’ll build your weekly class routine automatically.</div>
+    </div>
+  </div>
+  <div class="card" style="padding:20px;margin-bottom:18px;">
+    <div class="dropzone" id="routine-dropzone" style="padding:36px 20px;">
+      ${iconSvg('<path d="M12 16V4M8 8l4-4 4 4"/><path d="M4 16v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>', 32)}
+      <div style="font-weight:600;margin-top:8px;">Drop advising slip PDF or Excel here</div>
+      <div style="color:var(--ink-soft);margin:6px 0;">or</div>
+      <button class="btn btn-primary" id="routine-choose-btn">Choose file</button>
+      <input type="file" id="routine-file-input" accept=".pdf,.xlsx,.xls,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden">
+      <div class="hint">Supports East West University Advising / Deposit Slip · PDF or .xlsx</div>
+    </div>
+  </div>
+  <div id="routine-results">${renderRoutineResults()}</div>
+  `;
+}
+
+function renderRoutineResults(){
+  if(!routineState.items) return '';
+  const items = routineState.items;
+  const meta = routineState.meta || {};
+  if(!items.length){
+    return `<div class="card" style="padding:24px;text-align:center;color:var(--ink-soft);">No active courses found in this slip. Dropped courses are skipped.</div>`;
+  }
+  // Build a synthetic schedule object for the shared timetable renderer
+  const synthetic = {
+    id: 'routine_view',
+    name: 'My Routine',
+    items: items.map(it=>({ courseCode: it.courseCode, sectionNumber: it.sectionNumber }))
+  };
+  // Temporarily inject sections into a lookup the timetable uses via Store.getSection —
+  // we'll render meetings directly instead for reliability.
+  return `
+  <div class="card" style="padding:20px;" id="routine-export-root">
+    <div class="page-header" style="margin-bottom:14px;">
+      <div>
+        <h2 style="font-family:var(--font-display);font-size:20px;">Weekly Routine</h2>
+        <div class="sub">
+          ${meta.studentName ? escapeHtml(meta.studentName)+' · ' : ''}
+          ${meta.studentId ? 'ID '+escapeHtml(meta.studentId)+' · ' : ''}
+          ${meta.semester ? escapeHtml(meta.semester)+' · ' : ''}
+          ${items.length} course${items.length===1?'':'s'}
+          ${routineState.fileName ? ' · from '+escapeHtml(routineState.fileName) : ''}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm btn-primary" id="routine-export-png">Export as PNG</button>
+      </div>
+    </div>
+    <table class="data-table" style="margin-bottom:18px;">
+      <thead><tr><th>Course</th><th>Section</th><th>Credits</th><th>Meetings</th><th>Room</th></tr></thead>
+      <tbody>
+        ${items.map(it=>`<tr>
+          <td class="mono">${escapeHtml(it.courseCode)}</td>
+          <td>${escapeHtml(it.sectionNumber||'—')}</td>
+          <td>${it.credits!=null?escapeHtml(String(it.credits)):'—'}</td>
+          <td class="mono">${it.meetings.map(m=>`${dayShortFromFull(m.day)} ${formatMinutes(m.start)}-${formatMinutes(m.end)}`).join('<br>')}</td>
+          <td>${[...new Set(it.meetings.map(m=>m.room).filter(Boolean))].join(', ')||'—'}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <h3 style="font-size:15px;margin-bottom:10px;">Weekly Timetable</h3>
+    ${renderRoutineTimetable(items)}
+  </div>`;
+}
+
+function renderRoutineTimetable(items){
+  const blocks = [];
+  items.forEach(it=>{
+    (it.meetings||[]).forEach(m=>{
+      blocks.push({ courseCode: it.courseCode, section: it.sectionNumber||'', room: m.room||'', day: m.day, start: m.start, end: m.end });
+    });
+  });
+  blocks.forEach((b,i)=>{
+    b.conflict = blocks.some((o,j)=> j!==i && o.day===b.day && Conflicts.meetingsOverlap(b,o));
+  });
+  const layout = computeTimetableLayout(blocks, { hourHeight: 76, hideEmptyDays: true });
+  const grid = renderTimetableGridHTML(layout);
+  window.__pendingRoutineBlocks = { blocks, layout };
+  return `<div data-routine-timetable="1">${timetableLegendHTML()}${grid}</div>`;
+}
+
+function placeRoutineBlocks(){
+  const data = window.__pendingRoutineBlocks;
+  if(!data) return;
+  const container = document.querySelector('[data-routine-timetable]');
+  if(!container) return;
+  const timetableEl = container.querySelector('.timetable');
+  placeBlocksOnTimetable(timetableEl, data.blocks, data.layout);
+}
+
+/* Advising-slip time patterns: "MW 11:50AM-1:20PM", "S 11:50AM-2:50PM", "TR 1:30PM-3:00PM" */
+function parseAdvisingTime(raw, dayMap){
+  if(!raw) return null;
+  const s = String(raw).replace(/\s+/g,' ').trim();
+  const dayLetters = Object.keys(dayMap||DEFAULT_DAY_MAP).join('');
+  const re = new RegExp(
+    '\\b(['+dayLetters+']{1,4})\\s*(\\d{1,2}:\\d{2}\\s*[APap][Mm])\\s*[-–—]\\s*(\\d{1,2}:\\d{2}\\s*[APap][Mm])',
+    'i'
+  );
+  const m = re.exec(s);
+  if(!m) return null;
+  const letters = m[1].toUpperCase().split('');
+  const start = parseTimeToMinutes(m[2]);
+  const end = parseTimeToMinutes(m[3]);
+  if(start===null || end===null || end<=start) return null;
+  const meetings = [];
+  for(const L of letters){
+    const day = (dayMap||DEFAULT_DAY_MAP)[L];
+    if(day) meetings.push({ day, start, end, room: null });
+  }
+  return meetings.length ? meetings : null;
+}
+
+function parseAdvisingRows(rows, dayMap){
+  // rows: array of {course, section, credits, time, room, remarks}
+  const items = [];
+  let lastCourse = null;
+  for(const r of rows){
+    const remarks = (r.remarks||'').toLowerCase();
+    if(remarks.includes('dropped')) continue;
+    let course = (r.course||'').toString().trim();
+    let section = r.section!=null && r.section!=='' ? String(r.section).trim() : null;
+    let timeStr = (r.time||'').toString().trim();
+    let room = (r.room||'').toString().trim() || null;
+    // Lab continuation rows sometimes shift columns
+    if(!course && lastCourse && timeStr){
+      course = lastCourse + (/\blab\b/i.test(timeStr)?'':' Lab');
+    }
+    // Detect if "course" cell actually holds a time (shifted lab row)
+    if(course && !timeStr && parseAdvisingTime(course, dayMap)){
+      timeStr = course;
+      course = lastCourse ? (lastCourse.match(/Lab$/i) ? lastCourse : lastCourse + ' Lab') : 'Lab';
+    }
+    // Another shift: section cell holds time
+    if(!timeStr && section && parseAdvisingTime(section, dayMap)){
+      timeStr = section;
+      section = null;
+    }
+    if(!course || !timeStr) continue;
+    if(/tuition|laboratory fee|student activity|grand total|bank /i.test(course)) continue;
+    const meetings = parseAdvisingTime(timeStr, dayMap);
+    if(!meetings) continue;
+    if(room) meetings.forEach(m=>{ m.room = room; });
+    const code = course.replace(/\s+/g,' ').trim();
+    items.push({
+      courseCode: code,
+      sectionNumber: section || '—',
+      credits: r.credits!=null && r.credits!=='' ? r.credits : null,
+      meetings
+    });
+    lastCourse = code.replace(/\s+Lab$/i,'');
+  }
+  return items;
+}
+
+async function parseAdvisingPdf(file, dayMap){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  let fullText = '';
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    const items = content.items.map(it=>({str:it.str, x:it.transform[4], y:it.transform[5]}));
+    items.sort((a,b)=> b.y-a.y || a.x-b.x);
+    let line = null, linesBuf = [];
+    for(const it of items){
+      if(line && Math.abs(it.y-line.y)<=3){ line.parts.push(it); }
+      else { if(line) linesBuf.push(line); line = {y:it.y, parts:[it]}; }
+    }
+    if(line) linesBuf.push(line);
+    for(const ln of linesBuf){
+      ln.parts.sort((a,b)=>a.x-b.x);
+      fullText += ln.parts.map(p=>p.str).join(' ').replace(/\s+/g,' ').trim() + '\n';
+    }
+  }
+  const meta = {};
+  const nameM = /Name:\s*([A-Za-z .]+?)(?:\s+ID#|\s*$)/im.exec(fullText);
+  if(nameM) meta.studentName = nameM[1].trim();
+  const idM = /ID#\s*([\d\-]+)/i.exec(fullText);
+  if(idM) meta.studentId = idM[1].trim();
+  const semM = /(Spring|Summer|Fall|Autumn)[\s\-]*20\d{2}/i.exec(fullText);
+  if(semM) meta.semester = semM[0];
+
+  // Stop at bank copy / fee section to avoid noise
+  const cut = fullText.search(/\bTuition Fee\b|\bGrand Total\b|\bBank Copy\b/i);
+  const body = cut > 0 ? fullText.slice(0, cut) : fullText;
+  const lines = body.split('\n').map(l=>l.trim()).filter(Boolean);
+
+  const dayLetters = Object.keys(dayMap||DEFAULT_DAY_MAP).join('');
+  const timeRe = new RegExp(
+    '(['+dayLetters+']{1,4})\\s*(\\d{1,2}:\\d{2}\\s*[APap][Mm])\\s*[-–—]\\s*(\\d{1,2}:\\d{2}\\s*[APap][Mm])',
+    'gi'
+  );
+  const courseOnlyRe = /\b([A-Z]{2,5}\d{3,4}[A-Z]?(?:\s+Lab)?)\b/;
+
+  // Walk lines; attach multi-line times/rooms to the current course block
+  const items = [];
+  let cur = null;
+
+  function flush(){
+    if(cur && cur.meetings.length){
+      items.push({
+        courseCode: cur.course,
+        sectionNumber: cur.section || '—',
+        credits: cur.credits,
+        meetings: cur.meetings
+      });
+    }
+    cur = null;
+  }
+
+  function extractTimesAndRooms(text){
+    const found = [];
+    timeRe.lastIndex = 0;
+    let m;
+    while((m = timeRe.exec(text))){
+      const letters = m[1].toUpperCase().split('');
+      const start = parseTimeToMinutes(m[2]);
+      const end = parseTimeToMinutes(m[3]);
+      if(start===null || end===null || end<=start) continue;
+      // Room: text after this match until next time or end
+      const after = text.slice(m.index + m[0].length);
+      const nextTime = after.search(new RegExp('['+dayLetters+']{1,4}\\s*\\d{1,2}:\\d{2}','i'));
+      let roomChunk = (nextTime >= 0 ? after.slice(0, nextTime) : after).replace(/\s+/g,' ').trim();
+      roomChunk = roomChunk.replace(/^\d{4,}\.?\d*\s*/,'').trim(); // tuition
+      roomChunk = roomChunk.replace(/\bDropped\b.*/i,'').trim();
+      let room = cleanRoomString(roomChunk);
+      if(!room && roomChunk){
+        const rm = roomChunk.match(/([A-Z]{1,4}\d{0,2}[-–]?\d{1,4}|\b\d{2,4}\b)/i);
+        if(rm) room = rm[1];
+      }
+      for(const L of letters){
+        const day = (dayMap||DEFAULT_DAY_MAP)[L];
+        if(day) found.push({ day, start, end, room });
+      }
+    }
+    return found;
+  }
+
+  for(const line of lines){
+    if(/tuition|grand total|laboratory fee|student activity|name:|id#|course\(s\)|remarks/i.test(line)) continue;
+    const cm = courseOnlyRe.exec(line);
+    if(cm && !/fee|bank|total/i.test(line)){
+      // New course block
+      const course = cm[1].replace(/\s+/g,' ').trim();
+      // Lab continuation without repeating parent code in a weird way
+      if(/\bLab\b/i.test(course) && cur && !/\bLab\b/i.test(cur.course)){
+        // e.g. line is "CSE251 Lab ..." while cur is CSE251 → finish theory, start lab
+        flush();
+      } else if(cur && cur.course.replace(/\s+Lab$/i,'') === course.replace(/\s+Lab$/i,'') && /\bLab\b/i.test(course)){
+        flush();
+      } else if(cm.index < 40){
+        // Course at start of line → new block
+        flush();
+      } else {
+        // Course code mid-line noise — still try times on this line for current
+        if(cur){
+          extractTimesAndRooms(line).forEach(mt=> cur.meetings.push(mt));
+        }
+        continue;
+      }
+      const rest = line.slice(cm.index + cm[0].length);
+      let section = null, credits = null;
+      const after = rest.trim().split(/\s+/);
+      for(const tok of after){
+        if(section===null && /^\d{1,3}$/.test(tok)){ section = tok; continue; }
+        if(credits===null && /^\d+(\.\d+)?$/.test(tok) && parseFloat(tok)<=6){ credits = tok; continue; }
+        break;
+      }
+      cur = { course, section, credits, meetings: extractTimesAndRooms(line) };
+      continue;
+    }
+    // Continuation line (time / room only)
+    if(cur){
+      const more = extractTimesAndRooms(line);
+      if(more.length){
+        more.forEach(mt=> cur.meetings.push(mt));
+      } else if(cur.meetings.length){
+        // Room-only continuation under a recent meeting
+        const maybe = cleanRoomString(line) || (line.match(/([A-Z]{1,4}\d{0,2}[-–]?\d{1,4}|\b\d{2,4}\b)/i)||[])[1];
+        if(maybe && !cur.meetings[cur.meetings.length-1].room){
+          cur.meetings[cur.meetings.length-1].room = maybe;
+        }
+      }
+    }
+  }
+  flush();
+
+  // Deduplicate meetings
+  for(const it of items){
+    const seen = new Set();
+    it.meetings = it.meetings.filter(m=>{
+      const k = m.day+'|'+m.start+'|'+m.end+'|'+(m.room||'');
+      if(seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  return { items: items.filter(it=>it.meetings.length), meta };
+}
+
+async function parseAdvisingExcel(file, dayMap){
+  const buf = await file.arrayBuffer();
+  const wb = XLSX.read(buf, {type:'array'});
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const aoa = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+  const meta = {};
+  // Scan for name / id / semester
+  for(const row of aoa.slice(0,30)){
+    const cells = row.map(c=>String(c||'').trim()).filter(Boolean);
+    const joined = cells.join(' | ');
+    if(/Name:/i.test(joined)){
+      const idx = cells.findIndex(c=>/Name:/i.test(c));
+      if(idx>=0 && cells[idx+1]) meta.studentName = cells[idx+1].replace(/Name:\s*/i,'').trim();
+      else {
+        const m = /Name:\s*(.+)/i.exec(joined);
+        if(m) meta.studentName = m[1].split('|')[0].trim();
+      }
+    }
+    if(/ID#/i.test(joined)){
+      const m = /ID#\s*([\d\-]+)/i.exec(joined);
+      if(m) meta.studentId = m[1];
+    }
+    if(/(Spring|Summer|Fall|Autumn)[\s\-]*20\d{2}/i.test(joined)){
+      const m = /(Spring|Summer|Fall|Autumn)[\s\-]*20\d{2}/i.exec(joined);
+      if(m) meta.semester = m[0];
+    }
+  }
+  // Find header row with Course / Time
+  let headerIdx = -1;
+  for(let i=0;i<Math.min(aoa.length,40);i++){
+    const row = aoa[i].map(c=>String(c||'').toLowerCase());
+    if(row.some(c=>c.includes('course')) && row.some(c=>c.includes('time')||c.includes('weekday'))){
+      headerIdx = i; break;
+    }
+  }
+  const rows = [];
+  const start = headerIdx>=0 ? headerIdx+1 : 0;
+  for(let i=start;i<aoa.length;i++){
+    const raw = aoa[i].map(c=> c==null?'':c);
+    const cells = raw.map(c=>String(c).trim());
+    if(!cells.some(Boolean)) continue;
+    const joined = cells.join(' ');
+    if(/tuition fee|laboratory fee|grand total|student activity|bank asia|authorized signature/i.test(joined)) break;
+    // Find course-like cell
+    let course=null, section=null, credits=null, time=null, room=null, remarks='';
+    for(let j=0;j<cells.length;j++){
+      const c = cells[j];
+      if(!course && /^[A-Z]{2,5}\d{3,4}[A-Z]?(?:\s+Lab)?$/i.test(c)){ course = c; continue; }
+      if(course && section===null && /^\d{1,3}$/.test(c)){ section = c; continue; }
+      if(course && credits===null && /^\d+(\.\d+)?$/.test(c) && parseFloat(c)<=6){ credits = c; continue; }
+      if(!time && parseAdvisingTime(c, dayMap)){ time = c; continue; }
+      if(time && !room && c && !/^\d+(\.\d+)?$/.test(c) && !/^dropped/i.test(c)){ room = c; continue; }
+      if(/dropped/i.test(c)) remarks = c;
+    }
+    // Shifted lab rows: first non-empty might be time
+    if(!course && time){
+      // leave for parseAdvisingRows continuation logic — need last course
+      rows.push({ course:'', section, credits, time, room, remarks });
+      continue;
+    }
+    if(course) rows.push({ course, section, credits, time, room, remarks });
+  }
+  return { items: parseAdvisingRows(rows, dayMap), meta };
+}
+
+async function handleRoutineFile(file){
+  const name = (file.name||'').toLowerCase();
+  const isPdf = file.type==='application/pdf' || name.endsWith('.pdf');
+  const isXls = name.endsWith('.xlsx') || name.endsWith('.xls') || /sheet|excel/i.test(file.type||'');
+  if(!isPdf && !isXls){
+    toast('Please upload a PDF or Excel (.xlsx) advising slip.','error');
+    return;
+  }
+  try{
+    toast('Reading advising slip…');
+    const parsed = isPdf
+      ? await parseAdvisingPdf(file, Store.dayMap)
+      : await parseAdvisingExcel(file, Store.dayMap);
+    routineState.items = parsed.items;
+    routineState.meta = parsed.meta;
+    routineState.fileName = file.name;
+    toast(`Routine built · ${parsed.items.length} course${parsed.items.length===1?'':'s'}.`,'success');
+    render();
+  }catch(err){
+    console.error(err);
+    toast('Could not read this file. '+ (err.message||''),'error');
+  }
+}
+
+/* Schedule Generator removed — use Routine Generator instead */
+
+/* ---- Compare ---- */
+function renderCompare(){
+  const options = Store.schedules;
+  if(options.length<1){
+    return `<div class="page-header"><div><h1>Compare Schedules</h1><div class="sub">Line up your drafts side by side before you register.</div></div></div>
+      ${renderEmptyState('Nothing to compare yet','Create at least one schedule first.')}`;
+  }
+  const cards = options.map(s=>{
+    const st = Conflicts.scheduleStats(s);
+    const gaps = dailyGapStats(s);
+    const gapDays = DAY_ORDER.filter(d=>gaps[d]&&gaps[d].shortest!=null);
+    const avgShort = gapDays.length ? Math.round(gapDays.reduce((a,d)=>a+gaps[d].shortest,0)/gapDays.length) : null;
+    return { s, st, avgShort, gaps };
+  });
+  // Best values for highlighting
+  const minDays = Math.min(...cards.map(c=>c.st.daysUsed||99));
+  const minHours = Math.min(...cards.map(c=>c.st.totalMinutes||9e9));
+  const minConflicts = Math.min(...cards.map(c=>c.st.conflicts||0));
+  const earliestBest = Math.max(...cards.map(c=>c.st.earliest!=null?c.st.earliest:-1)); // later start is often preferred
+
+  return `
+  <div class="page-header"><div><h1>Compare Schedules</h1><div class="sub">Pick the draft that fits your week best. Green values are generally better.</div></div></div>
+  <div class="compare-grid">
+    ${cards.map(({s,st,avgShort})=>{
+      const metric = (label, val, good)=>{
+        return `<div class="compare-metric ${good?'best':''}"><span class="label">${label}</span><span class="val">${val}</span></div>`;
+      };
+      return `<div class="card compare-card">
+        <h3>${escapeHtml(s.name)}</h3>
+        <div class="sub mono" style="margin-top:-6px;">${s.items.map(i=>i.courseCode+' §'+i.sectionNumber).join(' · ')||'Empty'}</div>
+        ${metric('Courses', s.items.length+'/5', false)}
+        ${metric('Days on campus', st.daysUsed, st.daysUsed===minDays)}
+        ${metric('Weekly hours', (st.totalMinutes/60).toFixed(1)+'h', st.totalMinutes===minHours)}
+        ${metric('Conflicts', st.conflicts, st.conflicts===minConflicts && st.conflicts===0)}
+        ${metric('Friday classes', st.fridayCount, st.fridayCount===0)}
+        ${metric('Earliest class', st.earliest!=null?formatMinutes(st.earliest):'—', st.earliest===earliestBest)}
+        ${metric('Latest class', st.latest!=null?formatMinutes(st.latest):'—', false)}
+        ${metric('Avg. shortest gap', formatGapMinutes(avgShort), false)}
+        <button class="btn btn-sm" style="margin-top:8px;" data-view-schedule="${s.id}">Open schedule</button>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+/* ---- Needs Review ---- */
+function renderReview(){
+  const items = Store.dataset ? Store.dataset.needsReview : [];
+  return `
+  <div class="page-header"><div><h1>Needs Review</h1><div class="sub">${items.length} row${items.length===1?'':'s'} could not be confidently interpreted while parsing the PDF.</div></div></div>
+  ${items.length ? `<table class="data-table"><thead><tr><th>Raw text</th><th>Reason</th></tr></thead><tbody>
+    ${items.map(i=>`<tr><td class="mono">${escapeHtml(i.raw)}</td><td>${escapeHtml(i.reason)}</td></tr>`).join('')}
+  </tbody></table>` : renderEmptyState('Nothing to review','Every row in the current dataset parsed cleanly.')}
+  `;
+}
+
+/* ---- Settings ---- */
+function renderSettings(){
+  return `
+  <div class="page-header"><div><h1>Settings</h1><div class="sub">Appearance and ${Admin.isAdmin?'admin controls':'account'}.</div></div></div>
+
+  <div class="card" style="padding:18px;margin-bottom:16px;">
+    <h3 style="font-size:15px;margin-bottom:8px;">Admin access</h3>
+    ${Admin.isAdmin ? `
+      <p class="sub" style="margin-bottom:12px;">You are signed in as admin. Import PDF and dataset tools are unlocked.
+        <span class="mono" style="opacity:.75;">(password source: ${Admin.hashSource})</span>
+      </p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+        <button class="btn btn-sm" id="admin-logout">Log out of admin</button>
+      </div>
+      <h3 style="font-size:14px;margin-bottom:10px;">Change password</h3>
+      <p class="sub" style="margin-bottom:12px;">Like Gmail: enter your current password, then choose a new one. Saved on this device immediately. Download <span class="mono">admin-config.json</span> and upload it next to <span class="mono">index.html</span> so the new password works for the live site.</p>
+      <div style="display:grid;gap:10px;max-width:360px;">
+        <div class="form-row" style="margin:0;">
+          <label>Current password</label>
+          <input type="password" id="admin-pw-current" autocomplete="current-password" placeholder="Current password">
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>New password</label>
+          <input type="password" id="admin-pw-new" autocomplete="new-password" placeholder="At least 8 characters">
+        </div>
+        <div class="form-row" style="margin:0;">
+          <label>Confirm new password</label>
+          <input type="password" id="admin-pw-confirm" autocomplete="new-password" placeholder="Repeat new password">
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="btn btn-primary btn-sm" id="admin-change-password">Save new password</button>
+          <button class="btn btn-sm" id="admin-download-config">Download admin-config.json</button>
+        </div>
+      </div>
+    ` : `
+      <p class="sub" style="margin-bottom:10px;">Only the site admin can import course lists and manage the published dataset.</p>
+      <div class="form-row" style="max-width:280px;">
+        <label>Admin password</label>
+        <input type="password" id="admin-password" autocomplete="current-password" placeholder="Enter admin password">
+      </div>
+      <button class="btn btn-primary btn-sm" id="admin-login">Log in as admin</button>
+    `}
+  </div>
+
+  ${Admin.isAdmin ? `
+  <div class="card" style="padding:18px;margin-bottom:16px;">
+    <h3 style="font-size:15px;margin-bottom:12px;">Day letter mapping</h3>
+    <p class="sub" style="margin-bottom:12px;">Used to interpret single-letter day codes found in the PDF (e.g. R = Thursday).</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;">
+      ${Object.keys(Store.dayMap).map(letter=>`
+        <div class="form-row" style="margin-bottom:0;">
+          <label class="mono">${letter}</label>
+          <select data-daymap-letter="${letter}">
+            ${DAY_ORDER.map(d=>`<option value="${d}" ${Store.dayMap[letter]===d?'selected':''}>${d}</option>`).join('')}
+          </select>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn btn-primary btn-sm" id="save-daymap" style="margin-top:14px;">Save mapping</button>
+  </div>
+  <div class="card" style="padding:18px;margin-bottom:16px;">
+    <h3 style="font-size:15px;margin-bottom:8px;">Dataset (admin)</h3>
+    ${Store.dataset ? `<p class="sub">Current: <b class="mono" style="color:var(--ink);">${escapeHtml(Store.dataset.fileName)}</b> · ${Store.sharedSource?'loaded from shared dataset.json':'local only'} · ${new Date(Store.dataset.importedAt||Store.dataset.publishedAt||Date.now()).toLocaleString()}</p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+      <button class="btn btn-primary btn-sm" id="publish-dataset">Publish dataset.json</button>
+      <button class="btn btn-danger btn-sm" id="clear-dataset">Clear local dataset</button>
+    </div>
+    <p class="sub" style="margin-top:12px;">After publishing, upload <span class="mono">dataset.json</span> next to <span class="mono">index.html</span> on Netlify/GitHub Pages so every visitor sees the same courses.</p>` : `<p class="sub">No dataset yet. Import a PDF first.</p>`}
+  </div>
+  ` : `
+  <div class="card" style="padding:18px;margin-bottom:16px;">
+    <h3 style="font-size:15px;margin-bottom:8px;">Course catalog</h3>
+    <p class="sub">${Store.dataset ? `Using shared catalog: <b class="mono">${escapeHtml(Store.dataset.fileName||'dataset.json')}</b>` : 'No shared catalog is available yet.'}</p>
+  </div>
+  `}
+
+  <div class="card" style="padding:18px;">
+    <h3 style="font-size:15px;margin-bottom:8px;">About</h3>
+    <p class="sub" style="margin:0;">EWU Course Planner runs entirely in your browser. Your personal schedules stay on this device. The shared course list is published by the admin.</p>
+  </div>
+  `;
+}
+
+/* ---------------------- 8. EVENT WIRING ---------------------- */
+
+function navigate(route, param){
+  Store.route = route;
+  Store.routeParam = param || null;
+  render();
+  window.scrollTo(0,0);
+}
+
+function applyTheme(theme){
+  if(theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  else document.documentElement.removeAttribute('data-theme');
+}
+
+function wireGlobalEvents(){
+  document.querySelectorAll('[data-nav]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const focusId = el.getAttribute('data-schedule-focus');
+      navigate(el.getAttribute('data-nav'), focusId? {detailId:focusId} : null);
+    });
+  });
+
+  const gsearch = document.getElementById('global-search-input');
+  if(gsearch){
+    gsearch.addEventListener('input', debounce(e=>{
+      courseFilters.q = e.target.value;
+      navigate('courses', {q:e.target.value});
+    }, 220));
+    gsearch.addEventListener('keydown', e=>{ if(e.key==='Enter'){ courseFilters.q=e.target.value; navigate('courses',{q:e.target.value}); }});
+  }
+
+  const themeBtn = document.getElementById('theme-toggle');
+  if(themeBtn){
+    themeBtn.addEventListener('click', async ()=>{
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      applyTheme(next);
+      try{ await Persist.set('ui:theme', next); }catch(e){}
+    });
+  }
+
+  wireUploadEvents();
+  wireCoursesEvents();
+  wireScheduleRailEvents();
+  wireSchedulesPageEvents();
+  wireRoutineEvents();
+  wireSettingsEvents();
+
+  // timetable placement (after DOM settled)
+  requestAnimationFrame(()=>{
+    try{ placeTimetableBlocks(); }catch(e){}
+    try{ placeRoutineBlocks(); }catch(e){}
+  });
+
+  document.addEventListener('click', closeDropdownsOnOutsideClick, {once:true});
+}
+
+function closeDropdownsOnOutsideClick(e){
+  if(addDropdownOpenFor && !e.target.closest('.dropdown')){
+    addDropdownOpenFor = null; render();
+  } else {
+    document.addEventListener('click', closeDropdownsOnOutsideClick, {once:true});
+  }
+}
+
+function wireAddButtons(root){
+  root.querySelectorAll('[data-add-toggle]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const key = btn.getAttribute('data-add-toggle');
+      addDropdownOpenFor = addDropdownOpenFor===key ? null : key;
+      render();
+    });
+  });
+  root.querySelectorAll('[data-add-to-schedule]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const schId = btn.getAttribute('data-add-to-schedule');
+      const code = btn.getAttribute('data-code');
+      const section = btn.getAttribute('data-section');
+      const sch = Store.getSchedule(schId);
+      const result = Conflicts.addToSchedule(sch, code, section);
+      addDropdownOpenFor = null;
+      if(result.ok){ toast(`Added ${code} Section ${section} to ${sch.name}.`, 'success'); }
+      else { toast(result.detail || 'Could not add section.', 'error'); }
+      render();
+    });
+  });
+  root.querySelectorAll('[data-add-create-new]').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const code = btn.getAttribute('data-code');
+      const section = btn.getAttribute('data-section');
+      const name = prompt('Name your new schedule:', `Schedule ${Store.schedules.length+1}`);
+      if(name===null) return;
+      const sch = Store.createSchedule(name);
+      const result = Conflicts.addToSchedule(sch, code, section);
+      addDropdownOpenFor = null;
+      if(result.ok) toast(`Created "${sch.name}" and added ${code} Section ${section}.`, 'success');
+      else toast(result.detail,'error');
+      render();
+    });
+  });
+}
+
+function wireUploadEvents(){
+  const dz = document.getElementById('dropzone');
+  const input = document.getElementById('pdf-input');
+  const chooseBtn = document.getElementById('choose-pdf-btn');
+  if(!dz) return;
+  chooseBtn.addEventListener('click', ()=>input.click());
+  input.addEventListener('change', ()=>{ if(input.files[0]) handlePdfFile(input.files[0]); });
+  dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+  dz.addEventListener('drop', e=>{
+    e.preventDefault(); dz.classList.remove('drag');
+    if(e.dataTransfer.files[0]) handlePdfFile(e.dataTransfer.files[0]);
+  });
+}
+
+async function handlePdfFile(file){
+  if(!Admin.isAdmin){
+    toast('Only the admin can import course list PDFs.','error');
+    return;
+  }
+  if(file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')){
+    toast('Unsupported file. Please upload a PDF.', 'error'); return;
+  }
+  const progWrap = document.getElementById('upload-progress');
+  const fill = document.getElementById('upload-progress-fill');
+  const status = document.getElementById('upload-status');
+  const pageCount = document.getElementById('upload-page-count');
+  progWrap.classList.remove('hidden');
+  status.textContent = 'Reading PDF…';
+
+  try{
+    const {numPages, records, needsReview} = await parsePdf(file, Store.dayMap, (p,total)=>{
+      status.textContent = `Parsing course information…`;
+      pageCount.textContent = `Page ${p} / ${total}`;
+      fill.style.width = Math.round((p/total)*100) + '%';
+    });
+    status.textContent = 'Grouping sections and validating…';
+    await new Promise(r=>setTimeout(r,30));
+    const grouped = groupRecordsIntoCourses(records, needsReview, Store.dayMap);
+
+    Store.dataset = {
+      fileName: file.name,
+      pageCount: numPages,
+      importedAt: Date.now(),
+      courses: grouped.courses,
+      needsReview,
+      courseCount: grouped.courseCount,
+      sectionCount: grouped.sectionCount,
+      meetingCount: grouped.meetingCount
+    };
+    scrubDatasetFaculty(Store.dataset);
+    await Store.saveDataset();
+    Store.sharedSource = false;
+    toast(`PDF processed: ${grouped.courseCount} courses. Open Settings → Publish dataset.json so all visitors can see them.`, 'success');
+    navigate('settings');
+  }catch(err){
+    console.error(err);
+    toast('Could not parse this PDF. It may be corrupted, empty, or unsupported. ' + (err.message||''), 'error');
+    progWrap.classList.add('hidden');
+  }
+}
+
+function wireCoursesEvents(){
+  const search = document.getElementById('course-search');
+  if(search){
+    search.addEventListener('input', debounce(e=>{ courseFilters.q = e.target.value; courseFilters.limit=60; navigate('courses'); }, 200));
+  }
+  const ff = document.getElementById('filter-faculty'); if(ff) ff.addEventListener('change', e=>{ courseFilters.faculty=e.target.value; navigate('courses'); });
+  const fdy = document.getElementById('filter-day'); if(fdy) fdy.addEventListener('change', e=>{ courseFilters.day=e.target.value; navigate('courses'); });
+  const clear = document.getElementById('clear-filters'); if(clear) clear.addEventListener('click', ()=>{ courseFilters = {q:'',faculty:'',day:'',limit:60}; navigate('courses'); });
+  const loadMore = document.getElementById('load-more-courses'); if(loadMore) loadMore.addEventListener('click', ()=>{ courseFilters.limit += 60; navigate('courses'); });
+
+  wireAddButtons(document.getElementById('app'));
+}
+
+function wireScheduleRailEvents(){
+  const sel = document.getElementById('rail-schedule-select');
+  if(sel) sel.addEventListener('change', e=>{ Store.activeScheduleId = e.target.value || null; Store.saveActiveId(); render(); });
+  const newBtn = document.getElementById('rail-new-schedule');
+  if(newBtn) newBtn.addEventListener('click', createScheduleFlow);
+  document.querySelectorAll('[data-remove-item]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const active = Store.getActiveSchedule();
+      if(!active) return;
+      Conflicts.removeFromSchedule(active, btn.getAttribute('data-remove-item'));
+      render();
+    });
+  });
+}
+
+function createScheduleFlow(){
+  const name = prompt('Name your new schedule:', `Schedule ${Store.schedules.length+1}`);
+  if(name===null) return;
+  Store.createSchedule(name);
+  toast('Schedule created.', 'success');
+  render();
+}
+
+function wireSchedulesPageEvents(){
+  document.querySelectorAll('[data-action="new-schedule"]').forEach(b=>b.addEventListener('click', createScheduleFlow));
+  const importBtn = document.getElementById('import-share-btn');
+  if(importBtn) importBtn.addEventListener('click', importShareCode);
+  document.querySelectorAll('[data-view-schedule]').forEach(b=>b.addEventListener('click', ()=>{
+    Store.activeScheduleId = b.getAttribute('data-view-schedule'); Store.saveActiveId();
+    navigate('schedules', {detailId:b.getAttribute('data-view-schedule')});
+  }));
+  document.querySelectorAll('[data-rename-schedule]').forEach(b=>b.addEventListener('click', ()=>{
+    const id = b.getAttribute('data-rename-schedule');
+    const s = Store.getSchedule(id);
+    const name = prompt('Rename schedule:', s.name);
+    if(name){ Store.renameSchedule(id, name); render(); }
+  }));
+  document.querySelectorAll('[data-delete-schedule]').forEach(b=>b.addEventListener('click', ()=>{
+    const id = b.getAttribute('data-delete-schedule');
+    const s = Store.getSchedule(id);
+    if(confirm(`Delete "${s.name}"? This cannot be undone.`)){ Store.deleteSchedule(id); toast('Schedule deleted.'); render(); }
+  }));
+  document.querySelectorAll('[data-remove-from-schedule]').forEach(b=>b.addEventListener('click', ()=>{
+    const id = b.getAttribute('data-remove-from-schedule');
+    const code = b.getAttribute('data-code');
+    const s = Store.getSchedule(id);
+    Conflicts.removeFromSchedule(s, code);
+    render();
+    navigate('schedules', {detailId:id});
+  }));
+  document.querySelectorAll('[data-export-csv]').forEach(b=>b.addEventListener('click', ()=>exportScheduleCsv(b.getAttribute('data-export-csv'))));
+  document.querySelectorAll('[data-export-png]').forEach(b=>b.addEventListener('click', ()=>exportSchedulePng(b.getAttribute('data-export-png'))));
+  document.querySelectorAll('[data-share-schedule]').forEach(b=>b.addEventListener('click', ()=>shareSchedule(b.getAttribute('data-share-schedule'))));
+  document.querySelectorAll('[data-undo-schedule]').forEach(b=>b.addEventListener('click', ()=>{ if(undoSchedules()) render(); }));
+}
+
+async function exportElementAsPng(el, filename){
+  if(!el){ toast('Nothing to export.','error'); return; }
+  if(typeof html2canvas !== 'function'){
+    toast('PNG export library failed to load. Check your connection.','error');
+    return;
+  }
+  try{
+    toast('Rendering PNG…');
+    await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const bg = isDark ? '#1A1F2B' : '#FFFFFF';
+    const canvas = await html2canvas(el, {
+      backgroundColor: bg,
+      scale: 2.5,
+      useCORS: true,
+      logging: false,
+      onclone: (doc, cloned) => {
+        // Cleaner export: hide buttons, enlarge timetable typography
+        cloned.querySelectorAll('button, .btn').forEach(b=> b.style.display = 'none');
+        cloned.classList.add('tt-export-mode');
+        cloned.querySelectorAll('.timetable, .tt-block, .tt-gap').forEach(n=> n.classList.add('tt-export-mode'));
+        const wrap = cloned.querySelector('.timetable-wrap') || cloned;
+        wrap.style.overflow = 'visible';
+        doc.querySelectorAll('[style]').forEach(node=>{
+          const s = node.getAttribute('style') || '';
+          if(/color-mix|oklch|oklab|lab\(|lch\(|color\(/i.test(s)){
+            node.removeAttribute('style');
+          }
+        });
+      }
+    });
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('PNG downloaded.','success');
+  }catch(err){
+    console.error(err);
+    toast('Could not export PNG. '+ (err.message||''),'error');
+  }
+}
+
+function exportSchedulePng(id){
+  const root = document.getElementById('schedule-export-root') || document.querySelector(`[data-schedule-export="${id}"]`);
+  const s = Store.getSchedule(id);
+  const name = (s && s.name ? s.name : 'schedule').replace(/[^a-z0-9]+/gi,'_');
+  exportElementAsPng(root, name + '.png');
+}
+
+function exportScheduleCsv(id){
+  const s = Store.getSchedule(id);
+  if(!s) return;
+  let rows = [['Course','Section','Faculty','Day','Start','End','Room']];
+  s.items.forEach(item=>{
+    const sec = Store.getSection(item.courseCode, item.sectionNumber);
+    if(!sec) return;
+    sec.meetings.forEach(m=>{
+      rows.push([item.courseCode, sec.sectionNumber, sec.faculty||'', m.day, formatMinutes(m.start), formatMinutes(m.end), m.room||'']);
+    });
+  });
+  const csv = rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${s.name.replace(/[^a-z0-9]+/gi,'_')}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function wireRoutineEvents(){
+  const dz = document.getElementById('routine-dropzone');
+  const input = document.getElementById('routine-file-input');
+  const btn = document.getElementById('routine-choose-btn');
+  if(btn && input) btn.addEventListener('click', ()=>input.click());
+  if(input) input.addEventListener('change', ()=>{ if(input.files[0]) handleRoutineFile(input.files[0]); });
+  if(dz){
+    dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+    dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+    dz.addEventListener('drop', e=>{
+      e.preventDefault(); dz.classList.remove('drag');
+      if(e.dataTransfer.files[0]) handleRoutineFile(e.dataTransfer.files[0]);
+    });
+  }
+  const pngBtn = document.getElementById('routine-export-png');
+  if(pngBtn) pngBtn.addEventListener('click', ()=>{
+    const root = document.getElementById('routine-export-root');
+    exportElementAsPng(root, 'weekly_routine.png');
+  });
+}
+
+function wireSettingsEvents(){
+  const loginBtn = document.getElementById('admin-login');
+  if(loginBtn) loginBtn.addEventListener('click', async ()=>{
+    const input = document.getElementById('admin-password');
+    const result = await Admin.login(input ? input.value : '');
+    if(result.ok){
+      toast('Admin unlocked.','success');
+      navigate('settings');
+    } else {
+      toast(result.reason || 'Login failed.','error');
+    }
+  });
+  const pwInput = document.getElementById('admin-password');
+  if(pwInput) pwInput.addEventListener('keydown', e=>{
+    if(e.key==='Enter') document.getElementById('admin-login')?.click();
+  });
+  const logoutBtn = document.getElementById('admin-logout');
+  if(logoutBtn) logoutBtn.addEventListener('click', async ()=>{
+    await Admin.logout();
+    toast('Logged out of admin.');
+    navigate('dashboard');
+  });
+  const changeBtn = document.getElementById('admin-change-password');
+  if(changeBtn) changeBtn.addEventListener('click', async ()=>{
+    const cur = document.getElementById('admin-pw-current');
+    const neu = document.getElementById('admin-pw-new');
+    const conf = document.getElementById('admin-pw-confirm');
+    const result = await Admin.changePassword(
+      cur ? cur.value : '',
+      neu ? neu.value : '',
+      conf ? conf.value : ''
+    );
+    if(!result.ok){
+      toast(result.reason || 'Could not change password.','error');
+      return;
+    }
+    if(cur) cur.value = '';
+    if(neu) neu.value = '';
+    if(conf) conf.value = '';
+    Admin.downloadConfig(result.hash);
+    toast('Password updated on this device. admin-config.json downloaded — upload it next to index.html on your host.','success');
+    navigate('settings');
+  });
+  const dlCfg = document.getElementById('admin-download-config');
+  if(dlCfg) dlCfg.addEventListener('click', ()=>{
+    Admin.downloadConfig();
+    toast('Downloaded admin-config.json','success');
+  });
+  const publishBtn = document.getElementById('publish-dataset');
+  if(publishBtn) publishBtn.addEventListener('click', ()=> exportPublishedDataset());
+
+  const saveBtn = document.getElementById('save-daymap');
+  if(saveBtn) saveBtn.addEventListener('click', ()=>{
+    if(!Admin.isAdmin) return;
+    document.querySelectorAll('[data-daymap-letter]').forEach(sel=>{
+      Store.dayMap[sel.getAttribute('data-daymap-letter')] = sel.value;
+    });
+    Store.saveDayMap();
+    toast('Day mapping saved. Re-import your PDF for changes to take effect.', 'success');
+  });
+  const clearBtn = document.getElementById('clear-dataset');
+  if(clearBtn) clearBtn.addEventListener('click', async ()=>{
+    if(!Admin.isAdmin) return;
+    if(!confirm('Clear the local dataset cache? Shared dataset.json on the host is not deleted.')) return;
+    Store.dataset = null;
+    Store.sharedSource = false;
+    await Persist.del('dataset:meta'); await Persist.del('dataset:courses'); await Persist.del('dataset:needsReview');
+    navigate('upload');
+  });
+}
+
+/* ---------------------- 9. INIT ---------------------- */
+
+(async function init(){
+  document.getElementById('app').innerHTML = `<div class="empty-state" style="margin-top:120px;"><h3>Loading EWU Course Planner…</h3></div>`;
+  // Restore theme early to avoid flash
+  try{
+    const savedTheme = await Persist.get('ui:theme');
+    if(savedTheme === 'dark' || savedTheme === 'light') applyTheme(savedTheme);
+    else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) applyTheme('dark');
+  }catch(e){}
+  await Admin.restore();
+  await Store.loadAll();
+  render();
+})();
+</script>
+</body>
+</html>
